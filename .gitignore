@@ -1,0 +1,38 @@
+# —— 本机验证工具（独立 SDK / JDK / 包缓存）——
+.tools/
+
+# —— Flutter / Dart ——
+.dart_tool/
+build/
+.idea/
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-dependencies
+coverage/
+
+# —— Android / Gradle ——
+.gradle/
+.kotlin/
+local.properties
+key.properties
+.gradle-home/
+
+# —— 构建产物 / 安装包（体积大，走 GitHub Releases 发布）——
+*.apk
+*.aab
+*.ipa
+*.jks
+*.keystore
+
+# —— 日志 / 临时文件 ——
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# —— 真实凭据（绝不入库）——
+.env
+.env.*
+secrets.json

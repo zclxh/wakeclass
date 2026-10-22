@@ -1,0 +1,11 @@
+name: wakeclass_core
+description: 醒课课程表核心领域逻辑：课表数据模型、周次解析、单元格文本解析、OCR 网格解析（纯 Dart，零 Flutter 依赖）。
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.1.0 <4.0.0"
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0

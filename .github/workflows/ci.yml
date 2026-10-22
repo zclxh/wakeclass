@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    name: 领域包（纯 Dart）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: pub get
+        working-directory: packages/wakeclass_core
+        run: dart pub get
+      - name: analyze
+        working-directory: packages/wakeclass_core
+        run: dart analyze
+      - name: test
+        working-directory: packages/wakeclass_core
+        run: dart test
+
+  app:
+    name: Flutter 应用
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.7"
+          channel: stable
+          cache: true
+      - name: pub get
+        working-directory: app
+        run: flutter pub get
+      - name: analyze
+        working-directory: app
+        run: flutter analyze
+      - name: 启动模拟教务系统
+        working-directory: app
+        run: |
+          node test/mock_jwxt.mjs &
+          node test/mock_cas_urp.cjs &
+          sleep 3
+      - name: test
+        working-directory: app
+        run: flutter test
