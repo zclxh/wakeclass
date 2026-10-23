@@ -37,6 +37,11 @@ const List<String> courseColorNames = [
   '浅绿', '黄绿', '黄', '橙', '深橙', '棕', '蓝灰', '灰蓝', '浅灰蓝', '暖棕',
 ];
 
+/// 统一圆角/高度，保证全 App 观感一致。
+const double kCardRadius = 18;
+const double kFieldRadius = 14;
+const double kButtonHeight = 46;
+
 /// 暖色纸感浅色主题。
 ///
 /// [seedColor] 为主题色（设置页可更换），[backgroundColor] 为页面背景色
@@ -52,27 +57,33 @@ ThemeData buildLightTheme({
   final onBackground = backgroundColor.computeLuminance() > 0.5
       ? const Color(0xFF3E2C1C)
       : Colors.white;
-  return ThemeData(
+  final hairline = scheme.onSurface.withValues(alpha: 0.07);
+  final base = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: backgroundColor,
     canvasColor: backgroundColor,
     appBarTheme: AppBarTheme(
       backgroundColor: backgroundColor,
+      surfaceTintColor: Colors.transparent,
       foregroundColor: onBackground,
       elevation: 0,
+      scrolledUnderElevation: 0,
       centerTitle: true,
     ),
-    cardTheme: const CardThemeData(
+    cardTheme: CardThemeData(
       color: Colors.white,
-      elevation: 1,
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kCardRadius),
+        side: BorderSide(color: hairline),
+      ),
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: scheme.primary,
-      foregroundColor: scheme.onPrimary,
-    ),
+    dividerTheme: DividerThemeData(color: hairline, thickness: 0.8, space: 0.8),
   );
+  return _applyControls(base, hairline: hairline, fieldFill: Colors.white);
 }
 
 /// 深色主题（[seedColor] 与浅色主题保持一致）。
@@ -81,18 +92,105 @@ ThemeData buildDarkTheme({Color seedColor = const Color(0xFFB0652A)}) {
     seedColor: seedColor,
     brightness: Brightness.dark,
   );
-  return ThemeData(
+  final hairline = scheme.onSurface.withValues(alpha: 0.10);
+  final base = ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
+      surfaceTintColor: Colors.transparent,
       centerTitle: true,
       elevation: 0,
+      scrolledUnderElevation: 0,
     ),
     cardTheme: CardThemeData(
-      color: scheme.surfaceContainerHighest,
+      color: scheme.surfaceContainerHigh,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kCardRadius),
+        side: BorderSide(color: hairline),
+      ),
+    ),
+    dividerTheme: DividerThemeData(color: hairline, thickness: 0.8, space: 0.8),
+  );
+  return _applyControls(
+    base,
+    hairline: hairline,
+    fieldFill: scheme.surfaceContainerHigh,
+  );
+}
+
+/// 按钮 / 输入框 / 提示条统一风格。
+///
+/// 注意：按钮的 `textStyle` 必须从主题的 labelLarge 派生，
+/// 直接写 `TextStyle(fontSize: ...)` 会丢掉字体族（中文会变成方块）。
+ThemeData _applyControls(
+  ThemeData base, {
+  required Color hairline,
+  required Color fieldFill,
+}) {
+  final scheme = base.colorScheme;
+  final label = base.textTheme.labelLarge ?? const TextStyle();
+  final body = base.textTheme.bodyMedium ?? const TextStyle();
+  return base.copyWith(
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, kButtonHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        textStyle: label.copyWith(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, kButtonHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        foregroundColor: scheme.onSurface,
+        side: BorderSide(color: scheme.outlineVariant),
+        textStyle: label.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        textStyle: label.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: fieldFill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      labelStyle: body.copyWith(color: scheme.onSurfaceVariant),
+      hintStyle: body.copyWith(color: scheme.onSurfaceVariant.withValues(alpha: 0.7)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(kFieldRadius),
+        borderSide: BorderSide(color: hairline),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(kFieldRadius),
+        borderSide: BorderSide(color: hairline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(kFieldRadius),
+        borderSide: BorderSide(color: scheme.primary, width: 1.4),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: scheme.primary,

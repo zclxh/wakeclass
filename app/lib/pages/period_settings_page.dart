@@ -133,7 +133,6 @@ class _PeriodSettingsPageState extends State<PeriodSettingsPage> {
                   initialValue: _duration,
                   decoration: const InputDecoration(
                     labelText: '每节时长',
-                    border: OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -154,7 +153,6 @@ class _PeriodSettingsPageState extends State<PeriodSettingsPage> {
                   initialValue: _break,
                   decoration: const InputDecoration(
                     labelText: '课间休息',
-                    border: OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -176,7 +174,6 @@ class _PeriodSettingsPageState extends State<PeriodSettingsPage> {
             initialValue: _count,
             decoration: const InputDecoration(
               labelText: '每天几节课',
-              border: OutlineInputBorder(),
               isDense: true,
             ),
             items: [

@@ -121,9 +121,9 @@ class _ImportPageState extends State<ImportPage> {
                 _ImportCard(
                   icon: Icons.content_paste_go,
                   title: '粘贴导入（内网专用）',
-                  subtitle: '教务只能校园网访问、学校又没有 VPN 时：电脑上取到课表数据'
+                  subtitle: '教务只能校园网访问、学校又没有 VPN 时：在电脑上取到课表数据'
                       '（书签脚本 / F12 / 源代码）→ 发到手机 → 粘贴或选文件解析。'
-                      '微信收到的 .html 也能「用其他应用打开 → 醒课」直接导入',
+                      '微信里的 .html 也能「用其他应用打开 → 醒课」',
                   child: OutlinedButton.icon(
                     onPressed: _busy ? null : _openPaste,
                     icon: const Icon(Icons.content_paste),
@@ -184,30 +184,50 @@ class _ImportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(icon, size: 20, color: primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Text(
               subtitle,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                height: 1.55,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             child,
           ],
         ),

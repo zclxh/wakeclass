@@ -181,7 +181,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
             decoration: const InputDecoration(
               labelText: '课程名 *',
               hintText: '如：高等数学A',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -190,7 +189,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
             decoration: const InputDecoration(
               labelText: '教师',
               hintText: '如：张明远',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -199,7 +197,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
             decoration: const InputDecoration(
               labelText: '地点',
               hintText: '如：教一101',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -210,7 +207,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
               labelText: '周次',
               hintText: '如：1-16周、3-15周(单)、1-8,10-16周',
               helperText: _weekPreview,
-              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -221,7 +217,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
                   initialValue: _day,
                   decoration: const InputDecoration(
                     labelText: '星期',
-                    border: OutlineInputBorder(),
                   ),
                   items: [
                     for (var d = 1; d <= 7; d++)
@@ -236,7 +231,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
                   initialValue: _startPeriod,
                   decoration: const InputDecoration(
                     labelText: '开始节次',
-                    border: OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -260,7 +254,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
                   initialValue: _endPeriod,
                   decoration: const InputDecoration(
                     labelText: '结束节次',
-                    border: OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -287,7 +280,6 @@ class _CourseEditPageState extends State<CourseEditPage> {
             maxLines: 2,
             decoration: const InputDecoration(
               labelText: '备注（可选）',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 24),

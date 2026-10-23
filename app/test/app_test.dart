@@ -21,7 +21,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('还没有课表'), findsOneWidget);
-    expect(find.text('截图导入'), findsOneWidget);
+    expect(find.text('导入课表'), findsOneWidget);
     // 导入入口在顶部栏（与齿轮同尺寸），不再使用悬浮按钮
     expect(find.byIcon(Icons.add_photo_alternate_outlined), findsWidgets);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
@@ -33,7 +33,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 进入导入页
-    await tester.tap(find.text('截图导入'));
+    await tester.tap(find.text('导入课表'));
     await tester.pumpAndSettle();
 
     // 演示导入
@@ -57,7 +57,7 @@ void main() {
     await tester.pumpWidget(const WakeClassApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('截图导入'));
+    await tester.tap(find.text('导入课表'));
     await tester.pumpAndSettle();
 
     expect(find.text('教务直连'), findsWidgets);
@@ -102,18 +102,49 @@ void main() {
     expect(find.text('下周课'), findsNothing);
     expect(find.text('每周课'), findsOneWidget);
 
-    // 七天一屏：7 个表头同时存在（无横向滚动），并在星期下显示日期。
-    for (final d in ['周一', '周二', '周三', '周四', '周五', '周六', '周日']) {
+    // 学期里没有周末课 → 只显示周一到周五（列更宽，课程名更好读）
+    for (final d in ['周一', '周二', '周三', '周四', '周五']) {
       expect(find.text(d), findsOneWidget);
     }
+    expect(find.text('周六'), findsNothing);
     expect(find.text('9/7'), findsOneWidget);
-    expect(find.text('9/13'), findsOneWidget);
+    expect(find.text('9/11'), findsOneWidget);
 
     await tester.pumpWidget(wrap(2));
     await tester.pumpAndSettle();
     expect(find.text('本周课'), findsNothing);
     expect(find.text('下周课'), findsOneWidget);
     expect(find.text('9/14'), findsOneWidget);
+
+    // 有周末课时自动恢复 7 列
+    final withWeekend = Schedule(
+      id: 's2',
+      title: 't',
+      termStart: DateTime(2026, 9, 7),
+      totalWeeks: 20,
+      courses: [
+        Course.create(
+            name: '周末课',
+            weeks: const [],
+            dayOfWeek: 6,
+            startPeriod: 1,
+            endPeriod: 2),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ScheduleGrid(
+            schedule: withWeekend,
+            week: 1,
+            weekStart: DateTime(2026, 9, 7),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('周六'), findsOneWidget);
+    expect(find.text('9/12'), findsOneWidget);
   });
 
   testWidgets('设置页切换主题色并全局生效', (tester) async {

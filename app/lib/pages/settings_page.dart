@@ -224,7 +224,6 @@ class _SettingsPageState extends State<SettingsPage> {
           maxLines: 6,
           decoration: const InputDecoration(
             hintText: '粘贴备份的 JSON…',
-            border: OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -294,15 +293,16 @@ class _SettingsPageState extends State<SettingsPage> {
             decoration: const InputDecoration(
               labelText: '课表标题',
               hintText: '如：2026-2027学年第一学期',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-              side: BorderSide(color: theme.dividerColor),
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
             ),
             leading: const Icon(Icons.event),
             title: const Text('第 1 周周一（开学日）'),
@@ -315,7 +315,6 @@ class _SettingsPageState extends State<SettingsPage> {
             initialValue: _totalWeeks,
             decoration: const InputDecoration(
               labelText: '学期总周数',
-              border: OutlineInputBorder(),
             ),
             items: [
               for (var w = 16; w <= 22; w++)
@@ -431,7 +430,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 initialValue: _reminder.leadMinutes,
                 decoration: const InputDecoration(
                   labelText: '提前提醒时间',
-                  border: OutlineInputBorder(),
                   isDense: true,
                 ),
                 items: [

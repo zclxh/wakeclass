@@ -15,6 +15,16 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 
 ---
 
+## 界面预览
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/schedule.png" width="260" alt="课表"><br><sub>七天一屏 · 课程色条 · 今天高亮</sub></td>
+    <td align="center"><img src="docs/screenshots/course-actions.png" width="260" alt="课程操作"><br><sub>点课程即改颜色 / 编辑 / 删除</sub></td>
+    <td align="center"><img src="docs/screenshots/import.png" width="260" alt="导入"><br><sub>三种导入方式</sub></td>
+  </tr>
+</table>
+
 ## 功能特性
 
 ### 导入（两条路线，同一套校对页）

@@ -32,6 +32,9 @@ key.properties
 .DS_Store
 Thumbs.db
 
+# —— UI 快照（tool/shots_test.dart 生成，正式截图放 docs/screenshots）——
+app/tool/shots/
+
 # —— 真实凭据（绝不入库）——
 .env
 .env.*

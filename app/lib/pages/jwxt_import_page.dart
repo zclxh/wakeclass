@@ -246,7 +246,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             initialValue: _presetSchool,
             decoration: const InputDecoration(
               labelText: '快速选择学校（可选）',
-              border: OutlineInputBorder(),
               isDense: true,
             ),
             items: [
@@ -273,7 +272,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             initialValue: _selected?.id ?? 'auto',
             decoration: const InputDecoration(
               labelText: '系统类型',
-              border: OutlineInputBorder(),
             ),
             items: [
               const DropdownMenuItem(value: 'auto', child: Text('自动识别')),
@@ -309,7 +307,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             decoration: const InputDecoration(
               labelText: '教务系统登录地址 *',
               hintText: '浏览器地址栏里登录页的完整地址（含 WebVPN 地址）',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 6),
@@ -341,7 +338,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             controller: _username,
             decoration: const InputDecoration(
               labelText: '学号 *',
-              border: OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
@@ -350,7 +346,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             obscureText: _obscure,
             decoration: InputDecoration(
               labelText: '密码 *',
-              border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                 onPressed: () => setState(() => _obscure = !_obscure),
@@ -363,7 +358,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             decoration: const InputDecoration(
               labelText: '学期（可选）',
               hintText: '如 2026-2027-1；留空导入当前学期',
-              border: OutlineInputBorder(),
             ),
           ),
           if (_captchaShown) ...[
@@ -385,7 +379,6 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
               controller: _captcha,
               decoration: const InputDecoration(
                 labelText: '验证码 *',
-                border: OutlineInputBorder(),
               ),
             ),
           ],

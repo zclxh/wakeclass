@@ -7,6 +7,7 @@ import '../model/period_model.dart';
 import '../model/schedule_model.dart';
 import '../model/theme_model.dart';
 import '../services/notifications/reminders.dart';
+import '../theme.dart';
 import '../widgets/schedule_grid.dart';
 import 'course_actions_sheet.dart';
 import 'course_edit_page.dart';
@@ -204,46 +205,84 @@ class _SchedulePageState extends State<SchedulePage> {
     final sunday = monday.add(const Duration(days: 6));
     final isCurrentWeek = _week == _currentWeek;
     final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
-        // 左上角：桌面小组件（自定义颜色 / 一键添加）
+        toolbarHeight: 62,
+        titleSpacing: 2,
         leading: IconButton(
           key: const ValueKey('widget-entry'),
-          icon: const Icon(Icons.widgets_outlined),
+          icon: const Icon(Icons.widgets_outlined, size: 22),
           tooltip: '桌面小组件',
           onPressed: _openWidgetSettings,
         ),
-        // 周次与齿轮同一水平线
         title: InkWell(
           onTap: _goToCurrentWeek,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '第 $_week 周',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '第 $_week 周',
+                      style: TextStyle(
+                        fontSize: 17,
+                        height: 1.2,
+                        letterSpacing: 0.2,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    if (!isCurrentWeek) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          '回本周',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                            color: primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
-              Text(
-                '${monday.month}月${monday.day}日 - ${sunday.month}月${sunday.day}日'
-                '${isCurrentWeek ? '' : ' · 点击回本周'}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  '${monday.month}月${monday.day}日 – '
+                  '${sunday.month}月${sunday.day}日',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    height: 1.2,
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.85),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
-          // 导入：与齿轮同尺寸的图标按钮（无文字）
           IconButton(
-            icon: const Icon(Icons.add_photo_alternate_outlined),
+            icon: const Icon(Icons.add_photo_alternate_outlined, size: 22),
             tooltip: '导入课表',
             onPressed: _openImport,
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: const Icon(Icons.settings_outlined, size: 22),
             tooltip: '设置',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -255,7 +294,15 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
             ),
           ),
+          const SizedBox(width: 6),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.8),
+          child: Container(
+            height: 0.8,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+          ),
+        ),
       ),
       body: schedule.courses.isEmpty
           ? _EmptyState(
@@ -282,6 +329,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 }
 
+/// 空课表首屏：一个「迷你课表」插画 + 两种入口。
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onImport, required this.onAdd});
 
@@ -291,41 +339,117 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.grid_view_rounded,
-              size: 72,
-              color: theme.colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
+            _MiniScheduleArt(primary: primary),
+            const SizedBox(height: 26),
             Text(
               '还没有课表',
-              style: theme.textTheme.titleLarge,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              '对教务系统的课表页面截图，即可自动识别导入。',
+              '截图识别、教务直连、粘贴导入，任选一种\n导入后课表、提醒、小组件全部离线可用',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.textTheme.bodySmall?.copyWith(
+                height: 1.7,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 26),
             FilledButton.icon(
               onPressed: onImport,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('截图导入'),
+              icon: const Icon(Icons.file_download_outlined, size: 19),
+              label: const Text('导入课表'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             TextButton(
               onPressed: onAdd,
               child: const Text('手动添加一门课'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 空状态插画：一张迷你课表卡片（三行小色块）。
+class _MiniScheduleArt extends StatelessWidget {
+  const _MiniScheduleArt({required this.primary});
+
+  final Color primary;
+
+  static const _pattern = [
+    [true, false, true],
+    [false, true, false],
+    [true, true, false],
+  ];
+  static const _paletteIndex = [5, 9, 13];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final surface = theme.brightness == Brightness.dark
+        ? theme.colorScheme.surfaceContainerHigh
+        : Colors.white;
+    return Container(
+      width: 156,
+      height: 156,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: primary.withValues(alpha: 0.06),
+      ),
+      child: Center(
+        child: Container(
+          width: 104,
+          height: 104,
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: primary.withValues(alpha: 0.16),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // 表头：星期小点
+              for (var r = 0; r < 3; r++)
+                Expanded(
+                  child: Row(
+                    children: [
+                      for (var c = 0; c < 3; c++)
+                        Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.all(2.2),
+                            decoration: BoxDecoration(
+                              color: _pattern[r][c]
+                                  ? courseColor(_paletteIndex[r])
+                                      .withValues(alpha: 0.9)
+                                  : theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

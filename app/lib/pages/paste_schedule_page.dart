@@ -242,7 +242,6 @@ class _PasteSchedulePageState extends State<PasteSchedulePage> {
                 labelText: '课表页面 HTML / 接口 JSON',
                 hintText: '<html>… 或 {"kbList":[…]',
                 helperText: chars == 0 ? null : '已粘贴 $chars 个字符',
-                border: const OutlineInputBorder(),
                 alignLabelWithHint: true,
               ),
             ),

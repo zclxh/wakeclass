@@ -188,7 +188,6 @@ class _WidgetSettingsSheetState extends State<WidgetSettingsSheet> {
                     decoration: const InputDecoration(
                       labelText: '左上角自定义文字',
                       hintText: '最多 6 个字，如：26年秋',
-                      border: OutlineInputBorder(),
                       isDense: true,
                     ),
                   ),
