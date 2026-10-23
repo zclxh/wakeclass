@@ -435,7 +435,19 @@ class ZfsoftClient {
 
   // ---------- HTTP ----------
 
+  /// 学校前置的 WAF / 负载均衡会对同一地址**间歇性返回 404**
+  /// （实测同一 URL、同一 UA：200,200,200,404），所以 404 / 5xx 时自动重试。
   Future<_HttpResult> _get(String url,
+      {String cookie = '', String referer = ''}) async {
+    for (var attempt = 0;; attempt++) {
+      final result = await _getOnce(url, cookie: cookie, referer: referer);
+      final transient = result.status == 404 || result.status >= 500;
+      if (!transient || attempt >= 2) return result;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  Future<_HttpResult> _getOnce(String url,
       {String cookie = '', String referer = ''}) async {
     final request = http.Request('GET', Uri.parse(url));
     request.followRedirects = false;
