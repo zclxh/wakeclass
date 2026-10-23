@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'cas_urp_client.dart';
+import 'cas_zf_client.dart';
 import 'generic_jwxt_client.dart';
 import 'jwxt_types.dart';
 import 'qz_jwxt_client.dart';
@@ -305,12 +306,72 @@ const jwxtPresets = <JwxtPreset>[
 ];
 
 /// 适配器注册表：负责「URL → 用哪个适配器」。
+/// 统一认证（CAS）+ 正方 SSO：`service=` 指向 `…/sso/zfiotlogin` 的那类学校。
+///
+/// 与 [CasAdapter]（金智 CAS + URP）的区别：登录成功后落在正方 `jwglxt` 里，
+/// 所以直接调正方课表接口，不再去找 URP 的 eams 页面。
+class CasZfAdapter implements JwxtAdapter {
+  final CasZfClient _client = CasZfClient();
+
+  @override
+  String get id => 'cas_zf';
+
+  @override
+  String get name => '统一认证（CAS）· 正方';
+
+  @override
+  String get hint =>
+      '统一认证登录页，地址里带 service=…/sso/zfiotlogin，如 https://tyrz.xxx.cn:8243/cas/login?service=…';
+
+  @override
+  bool matches(String url) {
+    final lower = url.toLowerCase();
+    if (!RegExp(r'authserver|/cas/|/cas\b|tyrz').hasMatch(lower)) return false;
+    // 只有回跳地址是正方（jwglxt / sso/zfiotlogin）时才归这个适配器，
+    // 否则仍然交给金智 CAS + URP 的适配器。
+    return lower.contains('jwglxt') || lower.contains('/sso/');
+  }
+
+  @override
+  Future<JwxtLoginState> prepare(String url) async {
+    final challenge = await _client.prepareLogin(url);
+    return JwxtLoginState(
+      baseUrl: challenge.serviceUrl,
+      needsCaptcha: false,
+      handle: challenge,
+      systemName: CasZfClient.systemName,
+    );
+  }
+
+  @override
+  Future<JwxtImportResult> login(
+    JwxtLoginState state, {
+    required String username,
+    required String password,
+    String captcha = '',
+    String semester = '',
+  }) {
+    return _client.loginAndImport(
+      state.handle as CasZfChallenge,
+      username: username,
+      password: password,
+    );
+  }
+
+  @override
+  Future<Uint8List?> refreshCaptcha(JwxtLoginState state) async => null;
+
+  @override
+  void close() => _client.close();
+}
+
 class JwxtAdapterRegistry {
   JwxtAdapterRegistry._();
 
   /// 创建一组适配器（顺序 = 自动识别的优先级）。
   static List<JwxtAdapter> create() => [
         ZfsoftAdapter(),
+        CasZfAdapter(),
         QzAdapter(),
         CasAdapter(),
         GenericAdapter(),

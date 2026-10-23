@@ -241,6 +241,55 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ---------- 统一认证 CAS（回跳正方 SSO，昭通卫院那类入口）----------
+  if (path === '/cas/login' && req.method === 'GET') {
+    const service = url.searchParams.get('service') || '';
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Set-Cookie': 'CASSESSION=cas-001; Path=/',
+    });
+    res.end(`<!doctype html>
+<html><head><meta charset="utf-8"><title>统一身份认证</title></head>
+<body>
+<form id="fm1" action="/cas/login?service=${encodeURIComponent(service)}" method="post">
+  <input type="hidden" name="execution" value="e1s1" />
+  <input type="hidden" name="_eventId" value="submit" />
+  <input type="text" id="username" name="username" />
+  <input type="password" id="password" name="password" />
+  <button type="submit">登录</button>
+</form>
+</body></html>`);
+    return;
+  }
+  if (path === '/cas/login' && req.method === 'POST') {
+    const form = parseForm(body);
+    if (form.username !== ZF_USER || form.password !== ZF_PASS) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end('<html><body>用户名或密码错误</body></html>');
+      return;
+    }
+    const service = url.searchParams.get('service') || '';
+    const sep = service.includes('?') ? '&' : '?';
+    res.writeHead(302, { Location: `${service}${sep}ticket=ST-mock-001` });
+    res.end();
+    return;
+  }
+  if (path === '/sso/zfiotlogin') {
+    if ((url.searchParams.get('ticket') || '') !== 'ST-mock-001') {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('ticket invalid');
+      return;
+    }
+    const sid = crypto.randomUUID();
+    sessions.add(sid);
+    res.writeHead(302, {
+      Location: '/jwglxt/xtgl/index_initMenu.html',
+      'Set-Cookie': `ZFSESSION=${sid}; Path=/`,
+    });
+    res.end();
+    return;
+  }
+
   // ---------- 通用 ----------
   if (path === '/gen/login.jsp') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });

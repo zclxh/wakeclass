@@ -43,6 +43,9 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
   - **强智 jsxsd**：登录表单探测 → 课表页（`xskb/xskb_list.do`）→ 学期选择 → HTML 解析
   - **统一认证（CAS）+ URP**：金智 CAS 登录页探测（`execution` / 加密盐）→ 按官方 `encrypt.js`
     规则做 AES-CBC 密码加密 → 票据 302 跳转（含 `;jsessionid=` URL 重写）→ 定位 URP 课表页
+  - **统一认证（CAS）→ 正方 SSO**：登录地址形如
+    `https://tyrz.xxx.cn:8243/cas/login?service=https://jwxt.xxx.cn:443/sso/zfiotlogin`
+    时，CAS 登录后跟随回跳拿正方会话，直接调正方课表接口（自动与金智 URP 的 CAS 区分）
   - **通用（自动识别）**：兜底适配器，自动找页面里的登录表单（学号/密码/隐藏字段/验证码图片）→
     登录后依次尝试「当前页 → 页面里的课表链接 → 常见课表路径」→ 通用表格解析
     （表头找周一..周日、行首找节次、单元格复用 OCR 的文本解析规则）
