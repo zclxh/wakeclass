@@ -19,9 +19,14 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/schedule.png" width="260" alt="课表"><br><sub>七天一屏 · 课程色条 · 今天高亮</sub></td>
-    <td align="center"><img src="docs/screenshots/course-actions.png" width="260" alt="课程操作"><br><sub>点课程即改颜色 / 编辑 / 删除</sub></td>
-    <td align="center"><img src="docs/screenshots/import.png" width="260" alt="导入"><br><sub>三种导入方式</sub></td>
+    <td align="center"><img src="docs/screenshots/schedule.png" width="250" alt="课表（柔和）"><br><sub>柔和：淡色卡片 + 课程色条</sub></td>
+    <td align="center"><img src="docs/screenshots/vivid.png" width="250" alt="课表（鲜艳）"><br><sub>鲜艳：整块课程色（可切换）</sub></td>
+    <td align="center"><img src="docs/screenshots/dark.png" width="250" alt="深色模式"><br><sub>深色模式</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/import.png" width="250" alt="导入"><br><sub>三种导入方式</sub></td>
+    <td align="center"><img src="docs/screenshots/course-actions.png" width="250" alt="课程操作"><br><sub>点课程改颜色 / 编辑 / 删除</sub></td>
+    <td align="center"><img src="docs/screenshots/settings.png" width="250" alt="设置"><br><sub>主题色 / 背景 / 课表外观</sub></td>
   </tr>
 </table>
 

@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:wakeclass_app/app.dart';
 import 'package:wakeclass_app/model/theme_model.dart';
+import 'package:wakeclass_app/theme.dart';
 import 'package:wakeclass_app/widgets/schedule_grid.dart';
 
 void main() {
@@ -293,5 +294,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('上课时间'), findsOneWidget);
     expect(find.text('08:00-08:45'), findsOneWidget);
+  });
+
+  testWidgets('课表外观可在柔和 / 鲜艳之间切换并持久化', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const WakeClassApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.dragUntilVisible(
+      find.text('课表外观'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('当前：柔和'), findsOneWidget);
+
+    await tester.ensureVisible(find.byIcon(Icons.gradient_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.gradient_outlined));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('wakeclass_card_style'), 'vivid');
+    // 选中的说明文字也跟着换（证明界面确实重建了）
+    expect(find.text('整块课程色，颜色最醒目'), findsOneWidget);
+  });
+
+  test('课表外观：默认柔和，切换后写入偏好并在重启后恢复', () async {
+    SharedPreferences.setMockInitialValues({});
+    final model = ThemeModel();
+    await model.init();
+    expect(model.cardStyle, CourseCardStyle.soft);
+
+    await model.setCardStyle(CourseCardStyle.vivid);
+    expect(model.cardStyle, CourseCardStyle.vivid);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('wakeclass_card_style'), 'vivid');
+
+    final reloaded = ThemeModel();
+    await reloaded.init();
+    expect(reloaded.cardStyle, CourseCardStyle.vivid);
   });
 }

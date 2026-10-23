@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../theme.dart';
+
 /// 预设主题色。
 class ThemePreset {
   const ThemePreset(this.name, this.seed);
@@ -51,9 +53,11 @@ const backgroundPresets = <BackgroundPreset>[
 class ThemeModel extends ChangeNotifier {
   static const _colorKey = 'wakeclass_theme_color_index';
   static const _backgroundKey = 'wakeclass_background_index';
+  static const _cardStyleKey = 'wakeclass_card_style';
 
   int _colorIndex = 0;
   int _backgroundIndex = 0;
+  CourseCardStyle _cardStyle = CourseCardStyle.soft;
 
   int get colorIndex => _colorIndex;
   ThemePreset get preset => themePresets[_colorIndex];
@@ -63,6 +67,9 @@ class ThemeModel extends ChangeNotifier {
   BackgroundPreset get backgroundPreset =>
       backgroundPresets[_backgroundIndex.clamp(0, backgroundPresets.length - 1)];
   Color get backgroundColor => backgroundPreset.color;
+
+  /// 课表课程卡片外观。
+  CourseCardStyle get cardStyle => _cardStyle;
 
   Future<void> init() async {
     try {
@@ -77,6 +84,7 @@ class ThemeModel extends ChangeNotifier {
           background < backgroundPresets.length) {
         _backgroundIndex = background;
       }
+      _cardStyle = CourseCardStyle.byName(prefs.getString(_cardStyleKey));
     } catch (_) {
       // 读取失败则用默认色
     }
@@ -97,6 +105,19 @@ class ThemeModel extends ChangeNotifier {
     _backgroundIndex = index;
     notifyListeners();
     await _persist(_backgroundKey, index);
+  }
+
+  /// 切换课程卡片外观（柔和 / 鲜艳）。
+  Future<void> setCardStyle(CourseCardStyle style) async {
+    if (style == _cardStyle) return;
+    _cardStyle = style;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cardStyleKey, style.name);
+    } catch (_) {
+      // 保存失败不影响本次会话
+    }
   }
 
   Future<void> _persist(String key, int value) async {

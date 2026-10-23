@@ -42,6 +42,25 @@ const double kCardRadius = 18;
 const double kFieldRadius = 14;
 const double kButtonHeight = 46;
 
+/// 课表里课程卡片的外观（设置页可切换）。
+enum CourseCardStyle {
+  /// 柔和：淡色底 + 顶部课程色条 + 深色文字（默认）。
+  soft('柔和', '淡色卡片 + 课程色条，字更清楚'),
+
+  /// 鲜艳：整块课程色 + 高对比文字，一眼分课。
+  vivid('鲜艳', '整块课程色，颜色最醒目');
+
+  const CourseCardStyle(this.label, this.description);
+
+  final String label;
+  final String description;
+
+  static CourseCardStyle byName(String? name) => values.firstWhere(
+        (style) => style.name == name,
+        orElse: () => CourseCardStyle.soft,
+      );
+}
+
 /// 暖色纸感浅色主题。
 ///
 /// [seedColor] 为主题色（设置页可更换），[backgroundColor] 为页面背景色

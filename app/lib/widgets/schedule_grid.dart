@@ -21,6 +21,7 @@ class ScheduleGrid extends StatelessWidget {
     this.onCourseTap,
     this.showWeekend = true,
     this.periods,
+    this.cardStyle = CourseCardStyle.soft,
   });
 
   final Schedule schedule;
@@ -33,6 +34,9 @@ class ScheduleGrid extends StatelessWidget {
 
   /// 作息设置（自定义上课时间）；为空时用默认作息。
   final PeriodSettings? periods;
+
+  /// 课程卡片外观（柔和 / 鲜艳）。
+  final CourseCardStyle cardStyle;
 
   static final PeriodSettings _defaultPeriods = PeriodSettings.defaults();
 
@@ -105,6 +109,7 @@ class ScheduleGrid extends StatelessWidget {
                 headerHeight: _headerHeight,
                 rowHeight: rowHeight,
                 height: contentHeight,
+                cardStyle: cardStyle,
                 onCourseTap: onCourseTap,
               ),
           ],
@@ -196,6 +201,7 @@ class _DayColumn extends StatelessWidget {
     required this.headerHeight,
     required this.rowHeight,
     required this.height,
+    required this.cardStyle,
     required this.onCourseTap,
   });
 
@@ -209,6 +215,7 @@ class _DayColumn extends StatelessWidget {
   final double headerHeight;
   final double rowHeight;
   final double height;
+  final CourseCardStyle cardStyle;
   final ValueChanged<Course>? onCourseTap;
 
   @override
@@ -294,6 +301,7 @@ class _DayColumn extends StatelessWidget {
                       child: CourseTile(
                         course: course,
                         hasConflict: conflicts.contains(course.id),
+                        style: cardStyle,
                         onTap: () => onCourseTap?.call(course),
                       ),
                     ),
@@ -315,11 +323,15 @@ class CourseTile extends StatelessWidget {
     super.key,
     required this.course,
     this.hasConflict = false,
+    this.style = CourseCardStyle.soft,
     this.onTap,
   });
 
   final Course course;
   final bool hasConflict;
+
+  /// 卡片外观：柔和（淡底 + 色条）/ 鲜艳（整块课程色）。
+  final CourseCardStyle style;
   final VoidCallback? onTap;
 
   /// 把课程色压深，用作文字色（保留色相，保证可读）。
@@ -364,11 +376,26 @@ class CourseTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final vivid = style == CourseCardStyle.vivid;
     final base = courseColor(course.colorIndex);
-    final fg = isDark
-        ? Color.lerp(base, Colors.white, 0.62)!
-        : _deepen(base);
-    final sub = fg.withValues(alpha: 0.72);
+
+    final Color bgColor;
+    final Color fg;
+    if (vivid) {
+      bgColor = isDark ? Color.lerp(base, Colors.black, 0.28)! : base;
+      fg = bgColor.computeLuminance() > 0.55
+          ? Colors.black.withValues(alpha: 0.87)
+          : Colors.white;
+    } else {
+      bgColor = isDark
+          ? base.withValues(alpha: 0.26)
+          : Color.lerp(base, theme.colorScheme.surface, 0.86)!;
+      fg = isDark ? Color.lerp(base, Colors.white, 0.85)! : _deepen(base);
+    }
+    final sub = fg.withValues(alpha: vivid ? 0.86 : 0.72);
+    final BoxBorder? border = hasConflict
+        ? Border.all(color: Colors.redAccent, width: 1.6)
+        : (vivid ? null : Border(top: BorderSide(color: base, width: 3)));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -392,13 +419,9 @@ class CourseTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.fromLTRB(5, 6, 4, 4),
               decoration: BoxDecoration(
-                color: isDark
-                    ? base.withValues(alpha: 0.26)
-                    : Color.lerp(base, theme.colorScheme.surface, 0.86),
+                color: bgColor,
                 borderRadius: radius,
-                border: hasConflict
-                    ? Border.all(color: Colors.redAccent, width: 1.6)
-                    : Border(top: BorderSide(color: base, width: 3)),
+                border: border,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

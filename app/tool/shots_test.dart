@@ -107,19 +107,22 @@ void main() {
     ]);
   });
 
-  Future<void> pumpApp(WidgetTester tester, {bool empty = false}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    bool empty = false,
+    String? cardStyle,
+  }) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+    final prefs = <String, Object>{};
+    if (!empty) {
+      prefs['flutter.wakeclass_schedule_v1'] =
+          jsonEncode(_demoSchedule().toJson());
+    }
+    if (cardStyle != null) prefs['flutter.wakeclass_card_style'] = cardStyle;
     // ignore: invalid_use_of_visible_for_testing_member
-    SharedPreferences.setMockInitialValues(
-      empty
-          ? {}
-          : {
-              'flutter.wakeclass_schedule_v1':
-                  jsonEncode(_demoSchedule().toJson()),
-            },
-    );
+    SharedPreferences.setMockInitialValues(prefs);
     await tester.pumpWidget(
       const RepaintBoundary(key: _rootKey, child: WakeClassApp()),
     );
@@ -155,5 +158,17 @@ void main() {
     await tester.tap(find.text('高等数学A').first);
     await _settle(tester);
     await _shoot(tester, '05-course-actions');
+  });
+
+  testWidgets('vivid', (tester) async {
+    await pumpApp(tester, cardStyle: 'vivid');
+    await _shoot(tester, '06-vivid');
+  });
+
+  testWidgets('dark', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await pumpApp(tester);
+    await _shoot(tester, '07-dark');
   });
 }

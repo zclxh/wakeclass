@@ -321,6 +321,7 @@ class _SchedulePageState extends State<SchedulePage> {
                   week: index + 1,
                   weekStart: weekStart,
                   periods: widget.periodModel.settings,
+                  cardStyle: widget.themeModel.cardStyle,
                   onCourseTap: _openCourse,
                 );
               },

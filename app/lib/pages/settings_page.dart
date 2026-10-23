@@ -9,6 +9,7 @@ import '../model/period_model.dart';
 import '../model/schedule_model.dart';
 import '../model/theme_model.dart';
 import '../services/notifications/reminders.dart';
+import '../theme.dart';
 import 'period_settings_page.dart';
 import 'widget_settings_sheet.dart';
 
@@ -375,6 +376,52 @@ class _SettingsPageState extends State<SettingsPage> {
                     onTap: () => widget.themeModel.setBackgroundIndex(i),
                   ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          // 课表外观
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            leading: const Icon(Icons.dashboard_customize_outlined),
+            title: const Text('课表外观'),
+            subtitle: Text('当前：${widget.themeModel.cardStyle.label}'),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<CourseCardStyle>(
+                segments: [
+                  for (final style in CourseCardStyle.values)
+                    ButtonSegment<CourseCardStyle>(
+                      value: style,
+                      label: Text(style.label),
+                      icon: Icon(
+                        style == CourseCardStyle.soft
+                            ? Icons.tonality_outlined
+                            : Icons.gradient_outlined,
+                        size: 18,
+                      ),
+                    ),
+                ],
+                selected: {widget.themeModel.cardStyle},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) {
+                  widget.themeModel.setCardStyle(selection.first);
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Text(
+              widget.themeModel.cardStyle.description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           const SizedBox(height: 24),
