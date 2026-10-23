@@ -80,11 +80,7 @@ class _SchedulePageState extends State<SchedulePage> {
       MaterialPageRoute(builder: (_) => const ImportPage()),
     );
     if (decision == null || !mounted) return;
-    if (decision.replace) {
-      await widget.model.replaceCourses(decision.courses);
-    } else {
-      await widget.model.mergeCourses(decision.courses);
-    }
+    await decision.applyTo(widget.model);
     unawaited(_syncReminders());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

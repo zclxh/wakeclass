@@ -120,9 +120,10 @@ class _ImportPageState extends State<ImportPage> {
                 ),
                 _ImportCard(
                   icon: Icons.content_paste_go,
-                  title: '粘贴导入（内网 / VPN 专用）',
-                  subtitle: '教务只能校园网访问时：电脑连 VPN 打开课表页 → 复制网页源代码或'
-                      '接口 JSON → 发到手机 → 粘贴进来解析',
+                  title: '粘贴导入（内网专用）',
+                  subtitle: '教务只能校园网访问、学校又没有 VPN 时：电脑上取到课表数据'
+                      '（书签脚本 / F12 / 源代码）→ 发到手机 → 粘贴或选文件解析。'
+                      '微信收到的 .html 也能「用其他应用打开 → 醒课」直接导入',
                   child: OutlinedButton.icon(
                     onPressed: _busy ? null : _openPaste,
                     icon: const Icon(Icons.content_paste),

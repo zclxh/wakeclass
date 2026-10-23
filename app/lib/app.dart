@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'model/period_model.dart';
 import 'model/schedule_model.dart';
 import 'model/theme_model.dart';
+import 'pages/import_decision.dart';
+import 'pages/paste_schedule_page.dart';
 import 'pages/schedule_page.dart';
+import 'services/import/external_import.dart';
 import 'services/notifications/reminders.dart';
 import 'services/storage/schedule_store.dart';
 import 'services/widget/widget_bridge.dart';
@@ -73,16 +76,22 @@ class _HomeBootState extends State<HomeBoot> with WidgetsBindingObserver {
   /// 上次同步课前提醒的时间（回到前台时节流同步）。
   DateTime? _lastReminderSync;
 
+  /// 运行中从外部送进来的课表内容（分享 / 用其他应用打开）。
+  StreamSubscription<String>? _externalSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _externalSub =
+        ExternalImport.incoming.listen((text) => unawaited(_importExternal(text)));
     _boot();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _externalSub?.cancel();
     _model.dispose();
     _periodModel.dispose();
     super.dispose();
@@ -111,6 +120,30 @@ class _HomeBootState extends State<HomeBoot> with WidgetsBindingObserver {
     }
     if (mounted) setState(() => _ready = true);
     unawaited(_postBoot());
+    // 冷启动时从「打开 / 分享」带进来的课表文件
+    final pending = await ExternalImport.takePending();
+    if (pending != null) unawaited(_importExternal(pending));
+  }
+
+  /// 外部送进来的内容 → 粘贴导入页（预填 + 自动解析）。
+  Future<void> _importExternal(String text) async {
+    if (!mounted) return;
+    final decision = await Navigator.of(context).push<ImportDecision>(
+      MaterialPageRoute(
+        builder: (_) => PasteSchedulePage(initialText: text, autoParse: true),
+      ),
+    );
+    if (decision == null || !mounted) return;
+    await decision.applyTo(_model);
+    unawaited(_syncReminders());
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            '已${decision.replace ? '覆盖' : '追加'}导入 ${decision.courses.length} 门课'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _postBoot() async {
