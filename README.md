@@ -20,10 +20,17 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 ### 导入（两条路线，同一套校对页）
 
 - **教务直连**：填教务系统地址 + 学号 + 密码，自动识别系统类型
+  - **适配器架构**：所有厂商统一走 `JwxtAdapter` 接口（`detect → prepare → login`），
+    UI 不按厂商分支；新增一所学校 = 新增一个适配器文件
+  - **正方教务（jwglxt）**：登录页 `csrftoken` + `login_getPublicKey` 的 RSA 公钥，
+    密码按学校同样的 PKCS#1 v1.5 规则加密后提交 → `kbcx/xskbcx_cxXsKb.html` 的
+    `kbList` JSON（节次 / 周次 / 地点 / 教师）→ 失败时回退 HTML 表格解析
+  - **强智 jsxsd**：登录表单探测 → 课表页（`xskb/xskb_list.do`）→ 学期选择 → HTML 解析
   - **统一认证（CAS）+ URP**：金智 CAS 登录页探测（`execution` / 加密盐）→ 按官方 `encrypt.js`
     规则做 AES-CBC 密码加密 → 票据 302 跳转（含 `;jsessionid=` URL 重写）→ 定位 URP 课表页
-    → HTML 解析（UTF-8 / GBK 自适应）
-  - **强智 jsxsd**：登录表单探测 → 课表页（`xskb/xskb_list.do`）→ 学期选择 → 解析
+  - **通用（自动识别）**：兜底适配器，自动找页面里的登录表单（学号/密码/隐藏字段/验证码图片）→
+    登录后依次尝试「当前页 → 页面里的课表链接 → 常见课表路径」→ 通用表格解析
+    （表头找周一..周日、行首找节次、单元格复用 OCR 的文本解析规则）
   - **支持图片验证码**：展示验证码图片、人工输入（不绕过、不破解）
   - 账号密码只在内存里用于这一次登录请求，**不写入任何存储**
 - **截图 OCR 导入**：相册选图 / 拍照 → 端上识别（Google ML Kit，离线、支持中文）
@@ -87,7 +94,7 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 │   │   ├── pages/              # 课表主页 / 导入 / 教务直连 / 校对 / 课程编辑 / 设置 / 小组件设置
 │   │   ├── widgets/            # 周课表网格
 │   │   ├── services/
-│   │   │   ├── jwxt/           # 教务直连（强智、CAS+URP、CAS 密码加密、HTML 课表解析）
+│   │   │   ├── jwxt/           # 教务直连：适配器 + 正方/强智/CAS/通用 + HTML 解析 + RSA
 │   │   │   ├── ocr/            # ML Kit OCR 引擎（Web 端条件导出占位实现）
 │   │   │   ├── import/         # 截图导入流程与统一预览模型
 │   │   │   ├── notifications/  # 课前提醒调度
@@ -149,6 +156,9 @@ dart test
 node test/mock_jwxt.mjs        # 强智模拟  127.0.0.1:8788  账号 2026002/qzpass
 node test/mock_cas_urp.cjs     # CAS+URP 模拟 127.0.0.1:8790 账号 2026003/caspass
                                #   账号 captchauser 触发验证码流程，验证码 1234
+node test/mock_jwxt_universal.cjs  # 正方 + 通用 模拟 127.0.0.1:8791
+                               #   正方 /jwglxt 账号 2026005/zfpass
+                               #   通用 /gen/login.jsp 账号 2026004/genpass
 ```
 
 ### 4. 构建安装包
@@ -168,15 +178,21 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 ### 教务直连
 
 1. 主页点「导入」→「教务直连」
-2. 系统类型默认「自动识别」：地址含 `authserver` / `eams` 走统一认证（CAS），
-   含 `jsxsd` 走强智教务；识别不了时手动选择
+2. 系统类型默认「**自动识别**」：
+   - 地址含 `jwglxt` / `xtgl` → 正方教务
+   - 含 `jsxsd` → 强智教务
+   - 含 `authserver` / `cas` / `eams` → 统一认证（CAS）
+   - 其它 → 通用适配器（自动找登录表单与课表页）
+   识别不准时可以手动选择
 3. 粘贴**浏览器地址栏里登录页的完整地址**（统一认证需带 `service=` 参数）、学号、密码；
-   强智可填学期，留空导入当前学期
+   学期可留空（正方会读页面里的当前学年学期）
 4. 若登录需要验证码，页面会自动显示验证码图片，输入后提交
 5. 识别结果进入校对页核对，点「追加导入」或「覆盖导入」
 
 > 统一认证方式仅支持「账号密码 + 可选图片验证码」；微信扫码 / 短信验证码 / 滑块等
 > 登录方式无法自动完成，请改用截图导入。
+>
+> 通用适配器是兜底：换了学校、换了系统，先试它；仍不行就用截图导入（任何系统都能截图）。
 
 ### 截图导入
 
@@ -215,6 +231,10 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
   登录时必须使用带新 `;jsessionid=` 的 canonical service，否则票据校验不过
 - **课表解析**：URP 课表数据藏在 `new TaskActivity(...)` 的 JS 里，
   `index = 星期 * 节次数 + 节次`，周次是 53 位 bitmask；强智走 HTML 表格解析
+- **教务适配器层**：`JwxtAdapter` 统一 `detect / prepare / login`，UI 不按厂商分支
+  - 正方：`csrftoken` + RSA（PKCS#1 v1.5，pointycastle）加密密码 → `kbList` JSON
+  - 通用：自动识别登录表单（学号/密码/hidden/验证码）→ 跟随 302 → 找「课表」链接或常见路径
+    → 通用表格解析（与 OCR 共用 `parseCellText`，兼容 rowspan/colspan）
 - **桌面小组件**：原生 Kotlin `AppWidgetProvider` 读 `FlutterSharedPreferences` 里的课表 JSON
   与作息 JSON，用 `RemoteViews` 渲染；`AlarmManager` 每分钟刷新一次，跨天自动切换
   - 布局只能用 RemoteViews 白名单控件（`TextView` / `ImageView` / `LinearLayout` / `FrameLayout`），
@@ -230,8 +250,10 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 
 ## 已知限制
 
-- 教务直连目前适配**强智（jsxsd）**与**统一认证（CAS）+ URP**；正方等系统沿用同一适配层接口后续接入
-- 统一认证的微信扫码、短信验证码、滑块验证等方式不做绕过，请改用截图导入
+- 教务直连：内置**正方（jwglxt）**、**强智（jsxsd）**、**统一认证（CAS）+ URP**，
+  其余系统由**通用适配器**兜底（表单登录 + 表格 / kbList JSON）；青果、新版 URP 移动端 API 在路线图中
+- 微信扫码、短信验证码、滑块、双因子等登录方式不做绕过，请改用截图导入
+- 只开放校园网 / 需要 VPN 的教务系统，手机直连会超时；请连学校 VPN 后使用
 - 教务页面按 UTF-8 / GBK 自适应解析（其余编码暂不支持）
 - 学校若使用 http 明文教务系统，Android 需允许明文流量（当前仅在 `AndroidManifest.xml` 中开启）；
   正式发布建议只支持 https
@@ -248,7 +270,11 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 - [x] 截图 OCR 导入 + 校对页
 - [x] 课前提醒、桌面小组件（三种尺寸 / 配色 / 倒计时）
 - [x] 课程自定义颜色、页面背景色、自定义上课时间
-- [ ] 正方教务直连、多张截图合并导入、CAS 学期选择
+- [x] 适配器架构 + 正方（jwglxt）+ 通用自适应登录
+- [ ] 青果 KINGOSOFT、新版 URP 移动端 API
+- [ ] 粘贴 HTML/JSON、Excel/ICS 文件导入
+- [ ] 自定义规则引擎（任意系统，规则可分享）
+- [ ] 多张截图合并导入、CAS 学期选择
 - [ ] 多学期、导出 ICS、分享长图
 - [ ] iOS 小组件、云备份、多设备同步
 

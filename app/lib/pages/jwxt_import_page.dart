@@ -3,18 +3,16 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../services/import/import_preview.dart';
-import '../services/jwxt/cas_urp_client.dart';
+import '../services/jwxt/jwxt_adapter.dart';
 import '../services/jwxt/jwxt_exception.dart';
 import '../services/jwxt/jwxt_types.dart';
-import '../services/jwxt/qz_jwxt_client.dart';
 import 'import_decision.dart';
 import 'review_page.dart';
 
-/// 系统类型选择。
-enum _JwxtSystem { auto, qz, cas }
-
-/// 教务直连导入页：支持强智教务（jsxsd）与统一身份认证（CAS）+ URP。
-/// 自动识别系统类型，支持验证码人工输入（不绕过、不破解）。
+/// 教务直连导入页。
+///
+/// 通过 [JwxtAdapter] 统一接入多种教务系统（正方 / 强智 / 统一认证 / 通用），
+/// 自动识别系统类型；页面不再按厂商分支，新增系统只要加一个适配器。
 class JwxtImportPage extends StatefulWidget {
   const JwxtImportPage({super.key});
 
@@ -28,19 +26,21 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
   final _password = TextEditingController();
   final _semester = TextEditingController();
   final _captcha = TextEditingController();
-  final QzJwxtClient _qzClient = QzJwxtClient();
-  final CasUrpClient _casClient = CasUrpClient();
 
-  _JwxtSystem _system = _JwxtSystem.auto;
-  bool _isCas = false;
-  JwxtLoginChallenge? _qzChallenge;
-  CasLoginChallenge? _casChallenge;
+  late final List<JwxtAdapter> _adapters = JwxtAdapterRegistry.create();
+
+  /// 下拉框手动选择的适配器；null 表示自动识别。
+  JwxtAdapter? _selected;
+  JwxtAdapter? _active;
+  JwxtLoginState? _state;
+
   Uint8List? _captchaImage;
   bool _captchaShown = false;
   bool _busy = false;
   bool _obscure = true;
   String? _error;
   String? _errorHint;
+  String? _detected;
 
   @override
   void dispose() {
@@ -49,27 +49,15 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
     _password.dispose();
     _semester.dispose();
     _captcha.dispose();
-    _qzClient.close();
-    _casClient.close();
+    for (final adapter in _adapters) {
+      adapter.close();
+    }
     super.dispose();
   }
 
-  bool _detectCas() {
-    final text = _url.text.trim();
-    switch (_system) {
-      case _JwxtSystem.cas:
-        return true;
-      case _JwxtSystem.qz:
-        return false;
-      case _JwxtSystem.auto:
-        if (RegExp(r'authserver|/cas\b|eams', caseSensitive: false)
-            .hasMatch(text)) {
-          return true;
-        }
-        if (RegExp(r'jsxsd', caseSensitive: false).hasMatch(text)) return false;
-        return _isCas; // 无法识别：保持上次选择
-    }
-  }
+  /// 当前应使用的适配器（下拉框选择优先，否则按 URL 自动识别）。
+  JwxtAdapter _primaryAdapter(String url) =>
+      _selected ?? JwxtAdapterRegistry.detect(url, _adapters);
 
   Future<void> _start() async {
     final text = _url.text.trim();
@@ -80,63 +68,71 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
       });
       return;
     }
-    final isCas = _detectCas();
-    if (_system == _JwxtSystem.auto &&
-        !RegExp(r'authserver|/cas\b|eams|jsxsd', caseSensitive: false)
-            .hasMatch(text)) {
-      setState(() {
-        _error = '无法自动识别教务系统类型';
-        _errorHint = '请手动选择「强智教务」或「统一认证（CAS）」后重试';
-      });
-      return;
-    }
 
     setState(() {
       _busy = true;
       _error = null;
       _errorHint = null;
-      _isCas = isCas;
-      _qzChallenge = null;
-      _casChallenge = null;
       _captchaShown = false;
       _captchaImage = null;
+      _detected = null;
+      _state = null;
+      _active = null;
     });
-    try {
-      if (isCas) {
-        final challenge = await _casClient.prepareLogin(text);
+
+    final primary = _primaryAdapter(text);
+    final candidates = <JwxtAdapter>[primary];
+    // 自动识别落到「通用」时，如果其实是统一认证页，再试一次 CAS。
+    if (_selected == null && primary.id == 'generic') {
+      final cas = JwxtAdapterRegistry.byId('cas', _adapters);
+      if (cas != null) candidates.add(cas);
+    }
+
+    JwxtException? lastError;
+    for (final adapter in candidates) {
+      try {
+        final state = await adapter.prepare(text);
         if (!mounted) return;
-        setState(() => _casChallenge = challenge);
-        await _loginCas(challenge, '');
-      } else {
-        final challenge = await _qzClient.prepareLogin(text);
-        if (!mounted) return;
-        setState(() => _qzChallenge = challenge);
-        if (challenge.captchaField == null) {
-          await _loginQz(challenge, '');
-        } else {
+        setState(() {
+          _active = adapter;
+          _state = state;
+          _detected = state.systemName;
+          _busy = false;
+        });
+        if (state.needsCaptcha) {
           setState(() {
             _captchaShown = true;
-            _captchaImage = challenge.captchaImage;
-            _busy = false;
+            _captchaImage = state.captchaImage;
+            _captcha.clear();
           });
+          return;
         }
+        await _login(state, '');
+        return;
+      } on JwxtException catch (e) {
+        lastError = e;
+        if (adapter == candidates.last) break;
+        // 继续尝试下一个候选适配器
+      } catch (e) {
+        lastError = JwxtException(JwxtErrorKind.network, '连接失败：$e');
+        if (adapter == candidates.last) break;
       }
-    } on JwxtException catch (e) {
-      _fail(e);
-    } catch (e) {
-      _fail(JwxtException(JwxtErrorKind.network, '连接失败：$e'));
     }
+    _fail(lastError ??
+        const JwxtException(JwxtErrorKind.network, '无法连接教务系统'));
   }
 
-  Future<void> _loginQz(JwxtLoginChallenge challenge, String captcha) async {
+  Future<void> _login(JwxtLoginState state, String captcha) async {
+    final adapter = _active;
+    if (adapter == null) return;
     setState(() {
       _busy = true;
       _error = null;
       _errorHint = null;
     });
     try {
-      final result = await _qzClient.loginAndImport(
-        challenge,
+      final result = await adapter.login(
+        state,
         username: _username.text.trim(),
         password: _password.text,
         captcha: captcha,
@@ -144,43 +140,22 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
       );
       await _openReview(result);
     } on JwxtException catch (e) {
-      _fail(e);
-    } catch (e) {
-      _fail(JwxtException(JwxtErrorKind.network, '导入失败：$e'));
-    }
-  }
-
-  Future<void> _loginCas(CasLoginChallenge challenge, String captcha) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-      _errorHint = null;
-    });
-    try {
-      final result = await _casClient.loginAndImport(
-        challenge,
-        username: _username.text.trim(),
-        password: _password.text,
-        captcha: captcha,
-      );
-      await _openReview(result);
-    } on JwxtException catch (e) {
       if (e.kind == JwxtErrorKind.captchaRequired) {
+        Uint8List? image;
         try {
-          final bytes = await _casClient.fetchCaptcha(challenge);
-          if (!mounted) return;
-          setState(() {
-            _captchaShown = true;
-            _captchaImage = bytes;
-            _captcha.clear();
-            _busy = false;
-            _error = e.message;
-            _errorHint = e.hint;
-          });
-        } catch (fe) {
-          _fail(JwxtException(
-              JwxtErrorKind.network, '验证码图片加载失败：$fe'));
+          image = await adapter.refreshCaptcha(state);
+        } catch (_) {
+          image = state.captchaImage;
         }
+        if (!mounted) return;
+        setState(() {
+          _captchaShown = true;
+          _captchaImage = image ?? state.captchaImage;
+          _captcha.clear();
+          _busy = false;
+          _error = e.message;
+          _errorHint = e.hint;
+        });
       } else {
         _fail(e);
       }
@@ -211,9 +186,25 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
     });
   }
 
+  void _submit() {
+    if (_captchaShown) {
+      final state = _state;
+      if (state != null) {
+        _login(state, _captcha.text.trim());
+      } else {
+        _start();
+      }
+    } else {
+      _start();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final selected = _selected;
+    final hint = selected?.hint ??
+        '支持正方（jwglxt）、强智（jsxsd）、统一认证（CAS）+ URP，以及其它「表单登录 + 表格课表」的系统';
     return Scaffold(
       appBar: AppBar(title: const Text('教务直连')),
       body: ListView(
@@ -247,22 +238,38 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             ),
             const SizedBox(height: 12),
           ],
-          DropdownButtonFormField<_JwxtSystem>(
-            initialValue: _system,
+          DropdownButtonFormField<String>(
+            initialValue: _selected?.id ?? 'auto',
             decoration: const InputDecoration(
               labelText: '系统类型',
               border: OutlineInputBorder(),
             ),
-            items: const [
-              DropdownMenuItem(
-                  value: _JwxtSystem.auto, child: Text('自动识别')),
-              DropdownMenuItem(
-                  value: _JwxtSystem.qz, child: Text('强智教务（jsxsd）')),
-              DropdownMenuItem(
-                  value: _JwxtSystem.cas, child: Text('统一身份认证（CAS）')),
+            items: [
+              const DropdownMenuItem(value: 'auto', child: Text('自动识别')),
+              for (final adapter in _adapters)
+                DropdownMenuItem(value: adapter.id, child: Text(adapter.name)),
             ],
-            onChanged: (v) => setState(() => _system = v ?? _JwxtSystem.auto),
+            onChanged: (v) => setState(() {
+              _selected = (v == null || v == 'auto')
+                  ? null
+                  : JwxtAdapterRegistry.byId(v, _adapters);
+            }),
           ),
+          if (_detected != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.check_circle_outline,
+                    size: 16, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  '已识别：$_detected',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.primary),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _url,
@@ -272,6 +279,12 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
               hintText: '浏览器地址栏里登录页的完整地址',
               border: OutlineInputBorder(),
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hint,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -294,17 +307,15 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
               ),
             ),
           ),
-          if (!_isCas) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: _semester,
-              decoration: const InputDecoration(
-                labelText: '学期（可选）',
-                hintText: '如 2026-2027-1；留空导入当前学期',
-                border: OutlineInputBorder(),
-              ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _semester,
+            decoration: const InputDecoration(
+              labelText: '学期（可选）',
+              hintText: '如 2026-2027-1；留空导入当前学期',
+              border: OutlineInputBorder(),
             ),
-          ],
+          ),
           if (_captchaShown) ...[
             const SizedBox(height: 12),
             if (_captchaImage != null)
@@ -330,21 +341,7 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
           ],
           const SizedBox(height: 20),
           FilledButton.icon(
-            onPressed: _busy
-                ? null
-                : () {
-                    if (_captchaShown) {
-                      if (_isCas && _casChallenge != null) {
-                        _loginCas(_casChallenge!, _captcha.text.trim());
-                      } else if (_qzChallenge != null) {
-                        _loginQz(_qzChallenge!, _captcha.text.trim());
-                      } else {
-                        _start();
-                      }
-                    } else {
-                      _start();
-                    }
-                  },
+            onPressed: _busy ? null : _submit,
             icon: const Icon(Icons.cloud_download_outlined),
             label: Text(_captchaShown ? '提交验证码并登录' : '登录并导入'),
           ),

@@ -46,6 +46,7 @@ jobs:
         run: |
           node test/mock_jwxt.mjs &
           node test/mock_cas_urp.cjs &
+          node test/mock_jwxt_universal.cjs &
           sleep 3
       - name: test
         working-directory: app
