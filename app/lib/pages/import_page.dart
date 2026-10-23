@@ -7,6 +7,7 @@ import '../services/ocr/ocr_engine.dart';
 import '../services/ocr/ocr_engines.dart';
 import 'import_decision.dart';
 import 'jwxt_import_page.dart';
+import 'paste_schedule_page.dart';
 import 'review_page.dart';
 
 /// 导入页：演示导入 / 相册选图 / 拍照。
@@ -49,6 +50,15 @@ class _ImportPageState extends State<ImportPage> {
   Future<void> _openJwxt() async {
     final decision = await Navigator.of(context).push<ImportDecision>(
       MaterialPageRoute(builder: (_) => const JwxtImportPage()),
+    );
+    if (decision != null && mounted) {
+      Navigator.of(context).pop(decision);
+    }
+  }
+
+  Future<void> _openPaste() async {
+    final decision = await Navigator.of(context).push<ImportDecision>(
+      MaterialPageRoute(builder: (_) => const PasteSchedulePage()),
     );
     if (decision != null && mounted) {
       Navigator.of(context).pop(decision);
@@ -99,12 +109,24 @@ class _ImportPageState extends State<ImportPage> {
                 _ImportCard(
                   icon: Icons.cloud_download_outlined,
                   title: '教务直连',
-                  subtitle: '填写学校教务系统地址、学号和密码，支持强智（jsxsd）'
-                      '与统一认证（CAS）。账号密码仅用于本次登录请求，不保存。',
+                  subtitle: '填写学校教务系统地址、学号和密码，支持正方（jwglxt）、'
+                      '强智（jsxsd）、统一认证（CAS）与通用识别。'
+                      '账号密码仅用于本次登录请求，不保存。',
                   child: FilledButton.icon(
                     onPressed: _busy ? null : _openJwxt,
                     icon: const Icon(Icons.login),
                     label: const Text('直连导入'),
+                  ),
+                ),
+                _ImportCard(
+                  icon: Icons.content_paste_go,
+                  title: '粘贴导入（内网 / VPN 专用）',
+                  subtitle: '教务只能校园网访问时：电脑连 VPN 打开课表页 → 复制网页源代码或'
+                      '接口 JSON → 发到手机 → 粘贴进来解析',
+                  child: OutlinedButton.icon(
+                    onPressed: _busy ? null : _openPaste,
+                    icon: const Icon(Icons.content_paste),
+                    label: const Text('粘贴导入'),
                   ),
                 ),
                 _ImportCard(

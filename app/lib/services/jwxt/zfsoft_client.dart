@@ -9,6 +9,7 @@ import 'package:wakeclass_core/wakeclass_core.dart';
 
 import 'jwxt_exception.dart';
 import 'jwxt_types.dart';
+import 'jwxt_url.dart';
 import 'rsa_password.dart';
 import 'schedule_table_parser.dart';
 
@@ -92,7 +93,10 @@ class ZfsoftClient {
   static final _loginFailRe = RegExp(
       r'用户名或密码|密码错误|账号或密码|用户不存在|验证码错误|登录失败|用户被锁定');
 
-  /// 归一化教务地址：支持直接粘贴登录页 / 首页 / 只到域名。
+  /// 归一化教务地址：支持直接粘贴登录页 / 首页 / 只到域名 / WebVPN 地址。
+  ///
+  /// WebVPN 前缀会被保留（例：`https://webvpn.x.edu.cn/https/<token>/jwglxt/`），
+  /// 这样后续的 `/xtgl/...`、`/kbcx/...` 请求也会走同一个 WebVPN 入口。
   static String normalizeBase(String raw) {
     final trimmed = raw.trim();
     Uri uri;
@@ -107,22 +111,36 @@ class ZfsoftClient {
           JwxtErrorKind.badUrl, '只支持 http / https 地址');
     }
     final origin = '${uri.scheme}://${uri.authority}';
-    final path = uri.path;
-    final match = RegExp(r'/(jwglxt|xtgl)(?:/|$)', caseSensitive: false)
-        .firstMatch(path);
-    if (match != null) {
-      final segment = match.group(1)!.toLowerCase();
-      // /jwglxt/xtgl/... → 根是 /jwglxt/；直接 /xtgl/... → 根是域名根。
-      return segment == 'jwglxt' ? '$origin/jwglxt/' : '$origin/';
+    final prefix = webVpnPrefix(uri.path);
+    // 已经在 /jwglxt/ 下就原样保留；否则补上 /jwglxt/（WebVPN 前缀仍然带上）。
+    if (uri.path.toLowerCase().contains('/jwglxt')) {
+      return siteRoot(trimmed);
     }
-    return '$origin/jwglxt/';
+    return '$origin$prefix/jwglxt/';
   }
 
   /// 访问登录页，解析表单、csrftoken 与 RSA 公钥。
   Future<ZfsoftChallenge> prepareLogin(String inputUrl) async {
     final base = normalizeBase(inputUrl);
     final loginUrl = '${base}xtgl/login_slogin.html';
-    final page = await _get(loginUrl);
+    _HttpResult page;
+    try {
+      page = await _get(loginUrl);
+    } on TimeoutException {
+      throw JwxtException(
+        JwxtErrorKind.network,
+        '连接教务系统超时',
+        hint: networkHint(inputUrl) ??
+            '请检查网络；如果学校教务只能在校园网 / VPN 内访问，请先连上 VPN 或校园 Wi-Fi。',
+      );
+    } catch (e) {
+      throw JwxtException(
+        JwxtErrorKind.network,
+        '无法连接教务系统：$e',
+        hint: networkHint(inputUrl) ??
+            '请检查地址是否正确；若学校要求 VPN / 校园网，请连上后再试。',
+      );
+    }
     if (!_hasPasswordForm(page.text)) {
       throw const JwxtException(
         JwxtErrorKind.loginFormNotFound,

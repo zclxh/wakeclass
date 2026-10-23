@@ -1,7 +1,7 @@
 name: wakeclass_app
 description: 醒课 —— 支持截图 OCR 导入的大学课程表 App（Flutter 版）。
 publish_to: 'none'
-version: 0.3.2+13
+version: 0.3.3+14
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pointycastle/export.dart';
 import 'package:wakeclass_app/services/jwxt/generic_jwxt_client.dart';
 import 'package:wakeclass_app/services/jwxt/jwxt_adapter.dart';
+import 'package:wakeclass_app/services/jwxt/jwxt_url.dart';
 import 'package:wakeclass_app/services/jwxt/rsa_password.dart';
 import 'package:wakeclass_app/services/jwxt/zfsoft_client.dart';
 
@@ -74,6 +75,19 @@ void main() {
           'https://jw.example.edu.cn/jwglxt/');
     });
 
+    test('正方：WebVPN 地址保留前缀', () {
+      const vpnUrl =
+          'https://webvpn.example.edu.cn/https/77726476706e69737468656265737421'
+          '/jwglxt/xtgl/login_slogin.html';
+      expect(ZfsoftClient.normalizeBase(vpnUrl),
+          'https://webvpn.example.edu.cn/https/77726476706e69737468656265737421/jwglxt/');
+      expect(
+        ZfsoftClient.normalizeBase(
+            'https://webvpn.example.edu.cn/webvpn/abcdef123456/jwglxt/xtgl/login_slogin.html'),
+        'https://webvpn.example.edu.cn/webvpn/abcdef123456/jwglxt/',
+      );
+    });
+
     test('通用：保留登录页所在目录', () {
       expect(
         GenericJwxtClient.normalizeBase('https://jw.example.edu.cn/gen/login.jsp'),
@@ -87,6 +101,45 @@ void main() {
         GenericJwxtClient.normalizeBase('https://jw.example.edu.cn'),
         'https://jw.example.edu.cn/',
       );
+    });
+
+    test('通用：正方 / 强智地址识别到系统根（含 WebVPN）', () {
+      expect(
+        GenericJwxtClient.normalizeBase(
+            'https://jw.example.edu.cn/jwglxt/xtgl/login_slogin.html'),
+        'https://jw.example.edu.cn/jwglxt/',
+      );
+      expect(
+        GenericJwxtClient.normalizeBase(
+            'https://jw.example.edu.cn/jsxsd/framework/xsMain.jsp'),
+        'https://jw.example.edu.cn/jsxsd/',
+      );
+      expect(
+        GenericJwxtClient.normalizeBase(
+            'https://webvpn.example.edu.cn/https/tokentoken1234/jwglxt/xtgl/login_slogin.html'),
+        'https://webvpn.example.edu.cn/https/tokentoken1234/jwglxt/',
+      );
+    });
+  });
+
+  group('内网 / WebVPN 识别', () {
+    test('内网地址', () {
+      expect(looksIntranet('http://10.10.1.5/jwglxt/'), isTrue);
+      expect(looksIntranet('http://192.168.1.20/jsxsd/'), isTrue);
+      expect(looksIntranet('http://172.20.0.8/jwglxt/'), isTrue);
+      expect(looksIntranet('http://jwxt.local/'), isTrue);
+      expect(looksIntranet('https://jwxt.ztwzy.cn/jwglxt/'), isFalse);
+      expect(looksIntranet('https://172.32.0.1/'), isFalse);
+    });
+
+    test('WebVPN 判定与提示', () {
+      const vpn =
+          'https://webvpn.example.edu.cn/https/77726476706e69737468656265737421/jwglxt/';
+      expect(isWebVpn(vpn), isTrue);
+      expect(isWebVpn('https://jw.example.edu.cn/jwglxt/'), isFalse);
+      expect(networkHint(vpn), contains('WebVPN'));
+      expect(networkHint('http://10.1.2.3/jwglxt/'), contains('VPN'));
+      expect(networkHint('https://jw.example.edu.cn/jwglxt/'), isNull);
     });
   });
 

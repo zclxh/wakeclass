@@ -10,6 +10,7 @@ import 'package:wakeclass_core/wakeclass_core.dart';
 
 import 'jwxt_exception.dart';
 import 'jwxt_types.dart';
+import 'jwxt_url.dart';
 import 'qz_jwxt_client.dart' show QzJwxtClient;
 import 'schedule_table_parser.dart';
 import 'zfsoft_client.dart' show courseFromKbItem;
@@ -78,7 +79,7 @@ class GenericJwxtClient {
 
   // ---------- 第一步：探测登录页 ----------
 
-  /// 归一化地址：粘贴登录页 / 首页 / 域名都可以。
+  /// 归一化地址：粘贴登录页 / 首页 / 域名 / WebVPN 地址都可以。
   static String normalizeBase(String raw) {
     final trimmed = raw.trim();
     Uri uri;
@@ -91,6 +92,11 @@ class GenericJwxtClient {
     if (uri.scheme != 'http' && uri.scheme != 'https') {
       throw const JwxtException(
           JwxtErrorKind.badUrl, '只支持 http / https 地址');
+    }
+    // 已知系统根（含 WebVPN 前缀）：直接用它当基地址。
+    final lower = uri.path.toLowerCase();
+    if (RegExp(r'/(jwglxt|jsxsd|eams)(/|$)').hasMatch(lower)) {
+      return siteRoot(trimmed);
     }
     final path = uri.path;
     final lastSegment = path.split('/').last;
@@ -107,7 +113,24 @@ class GenericJwxtClient {
     final base = normalizeBase(inputUrl);
     final entry = inputUrl.trim();
 
-    final page = await _get(entry.isEmpty ? base : entry);
+    _Response page;
+    try {
+      page = await _get(entry.isEmpty ? base : entry);
+    } on TimeoutException {
+      throw JwxtException(
+        JwxtErrorKind.network,
+        '连接教务系统超时',
+        hint: networkHint(inputUrl) ??
+            '请检查网络；如果学校教务只能在校园网 / VPN 内访问，请先连上 VPN 或校园 Wi-Fi。',
+      );
+    } catch (e) {
+      throw JwxtException(
+        JwxtErrorKind.network,
+        '无法连接教务系统：$e',
+        hint: networkHint(inputUrl) ??
+            '请检查地址是否正确；若学校要求 VPN / 校园网，请连上后再试。',
+      );
+    }
     final document = parse(page.text);
     final form = _findLoginForm(document);
     if (form == null) {

@@ -6,6 +6,7 @@ import '../services/import/import_preview.dart';
 import '../services/jwxt/jwxt_adapter.dart';
 import '../services/jwxt/jwxt_exception.dart';
 import '../services/jwxt/jwxt_types.dart';
+import '../services/jwxt/jwxt_url.dart';
 import 'import_decision.dart';
 import 'review_page.dart';
 
@@ -304,9 +305,10 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
           TextField(
             controller: _url,
             keyboardType: TextInputType.url,
+            onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(
               labelText: '教务系统登录地址 *',
-              hintText: '浏览器地址栏里登录页的完整地址',
+              hintText: '浏览器地址栏里登录页的完整地址（含 WebVPN 地址）',
               border: OutlineInputBorder(),
             ),
           ),
@@ -316,6 +318,24 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
+          if (networkHint(_url.text) != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.vpn_lock_outlined,
+                    size: 15, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    networkHint(_url.text)!,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _username,
