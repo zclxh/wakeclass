@@ -18,6 +18,7 @@ class ScheduleGrid extends StatelessWidget {
     this.weekStart,
     this.onCourseTap,
     this.showWeekend = true,
+    this.periods,
   });
 
   final Schedule schedule;
@@ -28,8 +29,15 @@ class ScheduleGrid extends StatelessWidget {
   final ValueChanged<Course>? onCourseTap;
   final bool showWeekend;
 
-  static const double _axisWidth = 36;
+  /// 作息设置（自定义上课时间）；为空时用默认作息。
+  final PeriodSettings? periods;
+
+  static final PeriodSettings _defaultPeriods = PeriodSettings.defaults();
+
+  static const double _axisWidth = 40;
   static const double _headerHeight = 40;
+
+  PeriodSettings get _settings => periods ?? _defaultPeriods;
 
   DateTime? _dateOf(int day) {
     final base = weekStart;
@@ -48,10 +56,12 @@ class ScheduleGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = showWeekend ? const [1, 2, 3, 4, 5, 6, 7] : const [1, 2, 3, 4, 5];
-    var maxPeriod = 10;
+    final settings = _settings;
+    var maxPeriod = settings.count;
     for (final c in schedule.courses) {
       maxPeriod = math.max(maxPeriod, c.endPeriod);
     }
+    maxPeriod = math.max(maxPeriod, 8);
     // 冲突在全部课程中计算；当周只显示本周课程。
     final conflictIds = _conflictIds(schedule);
 
@@ -73,6 +83,7 @@ class ScheduleGrid extends StatelessWidget {
               maxPeriod: maxPeriod,
               headerHeight: _headerHeight,
               rowHeight: rowHeight,
+              periods: settings,
             ),
             for (final day in days)
               _DayColumn(
@@ -110,11 +121,13 @@ class _PeriodAxis extends StatelessWidget {
     required this.maxPeriod,
     required this.headerHeight,
     required this.rowHeight,
+    required this.periods,
   });
 
   final int maxPeriod;
   final double headerHeight;
   final double rowHeight;
+  final PeriodSettings periods;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +149,7 @@ class _PeriodAxis extends StatelessWidget {
                   Text('第$p节', style: labelStyle?.copyWith(fontSize: 8)),
                   const SizedBox(height: 1),
                   Text(
-                    periodTimeText(p),
+                    periods.timeText(p),
                     style: labelStyle?.copyWith(fontSize: 7),
                   ),
                 ],
@@ -298,8 +311,8 @@ class CourseTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: fg,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
                   height: 1.15,
                 ),
               ),
@@ -308,7 +321,11 @@ class CourseTile extends StatelessWidget {
                   course.location,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: fg, fontSize: 8, height: 1.2),
+                  style: TextStyle(
+                    color: fg.withValues(alpha: 0.92),
+                    fontSize: 9,
+                    height: 1.25,
+                  ),
                 ),
               if (course.teacher.isNotEmpty)
                 Text(
@@ -316,7 +333,7 @@ class CourseTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: fg.withValues(alpha: 0.85),
+                    color: fg.withValues(alpha: 0.78),
                     fontSize: 8,
                     height: 1.2,
                   ),

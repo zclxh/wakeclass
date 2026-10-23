@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:wakeclass_core/wakeclass_core.dart';
 
+import '../model/period_model.dart';
 import '../model/schedule_model.dart';
 import '../model/theme_model.dart';
 import '../services/notifications/reminders.dart';
 import '../widgets/schedule_grid.dart';
+import 'course_actions_sheet.dart';
 import 'course_edit_page.dart';
 import 'import_decision.dart';
 import 'import_page.dart';
@@ -14,12 +18,19 @@ import 'widget_settings_sheet.dart';
 /// 课表主页。
 ///
 /// - 顶部栏：左侧桌面小组件入口；中间「第 N 周 + 日期范围」；右侧导入 + 设置；
-/// - 左右滑动课表切换上一周 / 下一周；点击周次文字回到本周。
+/// - 左右滑动课表切换上一周 / 下一周；点击周次文字回到本周；
+/// - 打开时直接停在当前周；点击课程可改颜色 / 编辑 / 删除。
 class SchedulePage extends StatefulWidget {
-  const SchedulePage({super.key, required this.model, required this.themeModel});
+  const SchedulePage({
+    super.key,
+    required this.model,
+    required this.themeModel,
+    required this.periodModel,
+  });
 
   final ScheduleModel model;
   final ThemeModel themeModel;
+  final PeriodModel periodModel;
 
   @override
   State<SchedulePage> createState() => _SchedulePageState();
@@ -32,14 +43,34 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void initState() {
     super.initState();
-    _week = widget.model.displayWeek;
+    _week = _weekInRange(widget.model.displayWeek);
     _pageController = PageController(initialPage: _week - 1);
+    widget.model.addListener(_onModelChanged);
   }
 
   @override
   void dispose() {
+    widget.model.removeListener(_onModelChanged);
     _pageController.dispose();
     super.dispose();
+  }
+
+  int _weekInRange(int week) {
+    final total = widget.model.schedule.totalWeeks;
+    if (total < 1) return 1;
+    return week.clamp(1, total);
+  }
+
+  /// 课表变化（导入 / 改开学日）后，保证展示周仍在学期范围内。
+  void _onModelChanged() {
+    final target = _weekInRange(_week);
+    if (target == _week) return;
+    _week = target;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      _pageController.jumpToPage(target - 1);
+    });
+    setState(() {});
   }
 
   int get _currentWeek => widget.model.schedule.currentWeek();
@@ -54,7 +85,7 @@ class _SchedulePageState extends State<SchedulePage> {
     } else {
       await widget.model.mergeCourses(decision.courses);
     }
-    await _syncReminders();
+    unawaited(_syncReminders());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -69,16 +100,62 @@ class _SchedulePageState extends State<SchedulePage> {
   Future<void> _syncReminders() async {
     try {
       final settings = await CourseReminderService.loadSettings();
-      await CourseReminderService.sync(widget.model.schedule,
-          settings: settings);
+      await CourseReminderService.sync(
+        widget.model.schedule,
+        settings: settings,
+        periods: widget.periodModel.settings,
+      );
     } catch (_) {
       // 通知不可用时忽略
     }
   }
 
+  /// 点课程：改颜色 / 编辑 / 删除。
+  Future<void> _openCourse(Course course) async {
+    final action = await showCourseActionsSheet(
+      context,
+      course: course,
+      periods: widget.periodModel.settings,
+      onColorSelected: (index) =>
+          widget.model.upsertCourse(course.copyWith(colorIndex: index)),
+    );
+    if (!mounted || action == null) return;
+    if (action == CourseAction.edit) {
+      await _editCourse(course);
+    } else if (action == CourseAction.delete) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('删除课程'),
+          content: Text('确定删除「${course.name}」吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('删除'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        await widget.model.removeCourse(course.id);
+        unawaited(_syncReminders());
+      }
+    }
+  }
+
   Future<void> _editCourse(Course course) async {
     final result = await Navigator.of(context).push<CourseEditResult>(
-      MaterialPageRoute(builder: (_) => CourseEditPage(course: course)),
+      MaterialPageRoute(
+        builder: (_) => CourseEditPage(
+          course: course,
+          totalWeeks: widget.model.schedule.totalWeeks,
+          periods: widget.periodModel.settings,
+        ),
+      ),
     );
     if (result == null) return;
     if (result.delete && result.id != null) {
@@ -86,15 +163,21 @@ class _SchedulePageState extends State<SchedulePage> {
     } else if (result.course != null) {
       await widget.model.upsertCourse(result.course!);
     }
-    await _syncReminders();
+    unawaited(_syncReminders());
   }
 
   Future<void> _addCourse() async {
     final result = await Navigator.of(context).push<CourseEditResult>(
-      MaterialPageRoute(builder: (_) => const CourseEditPage()),
+      MaterialPageRoute(
+        builder: (_) => CourseEditPage(
+          totalWeeks: widget.model.schedule.totalWeeks,
+          periods: widget.periodModel.settings,
+        ),
+      ),
     );
     if (result?.course != null) {
       await widget.model.upsertCourse(result!.course!);
+      unawaited(_syncReminders());
     }
   }
 
@@ -103,6 +186,7 @@ class _SchedulePageState extends State<SchedulePage> {
     return showWidgetSettingsSheet(
       context,
       schedule: widget.model.schedule,
+      periods: widget.periodModel.settings,
     );
   }
 
@@ -167,8 +251,12 @@ class _SchedulePageState extends State<SchedulePage> {
             tooltip: '设置',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                  builder: (_) =>
-                      SettingsPage(model: widget.model, themeModel: widget.themeModel)),
+                builder: (_) => SettingsPage(
+                  model: widget.model,
+                  themeModel: widget.themeModel,
+                  periodModel: widget.periodModel,
+                ),
+              ),
             ),
           ),
         ],
@@ -189,7 +277,8 @@ class _SchedulePageState extends State<SchedulePage> {
                   schedule: schedule,
                   week: index + 1,
                   weekStart: weekStart,
-                  onCourseTap: _editCourse,
+                  periods: widget.periodModel.settings,
+                  onCourseTap: _openCourse,
                 );
               },
             ),

@@ -82,7 +82,9 @@ void main() {
       final lines = widgetTodayCourses(schedule, DateTime(2026, 10, 22, 10, 30));
       expect(lines.length, 1);
       expect(lines.first.name, '模拟电子技术');
-      expect(lines.first.detail, '10:10-11:50 · C3405');
+      expect(lines.first.startText, '10:10');
+      expect(lines.first.endText, '11:50');
+      expect(lines.first.detail, '第3-4节 · C3405');
       expect(lines.first.status, '还有 1 小时 20 分下课');
     });
 
@@ -110,7 +112,7 @@ void main() {
       expect(lines, isEmpty);
     });
 
-    test('按尺寸限制数量', () {
+    test('按尺寸限制数量（小 2 / 中 3 / 大 4）', () {
       final schedule = _thursdaySchedule();
       final lines = widgetTodayCourses(
         schedule,
@@ -118,6 +120,29 @@ void main() {
         max: 1,
       );
       expect(lines.length, 1);
+
+      expect(widgetSizePresets.map((s) => s.id), ['small', 'medium', 'large']);
+      expect(widgetSizePresets.map((s) => s.maxCourses), [2, 3, 4]);
+    });
+
+    test('自定义作息后时间与倒计时都按新作息计算', () {
+      final schedule = _thursdaySchedule();
+      // 第 1 节改成 09:10 开始，每节 50 分钟 → 09:10-10:00、10:05-10:55 ...
+      final periods = PeriodSettings.uniform(
+        firstStart: '09:10',
+        durationMinutes: 50,
+        breakMinutes: 5,
+        count: 12,
+      );
+      final lines = widgetTodayCourses(
+        schedule,
+        DateTime(2026, 10, 22, 9, 0),
+        periods: periods,
+      );
+      expect(lines.first.startText, '09:10');
+      expect(lines.first.endText, '10:55');
+      expect(lines.first.status, '还有 10 分钟上课');
+      expect(lines.first.detail, '第1-2节 · 丁2501');
     });
   });
 

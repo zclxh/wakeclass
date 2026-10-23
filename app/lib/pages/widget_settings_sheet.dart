@@ -5,25 +5,30 @@ import 'package:wakeclass_core/wakeclass_core.dart';
 
 import '../services/widget/widget_bridge.dart';
 import '../services/widget/widget_settings.dart';
+import '../theme.dart';
 
 /// 打开「桌面小组件」设置面板（文字 / 尺寸 / 配色 / 一键添加）。
 Future<void> showWidgetSettingsSheet(
   BuildContext context, {
   required Schedule schedule,
+  PeriodSettings? periods,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => WidgetSettingsSheet(schedule: schedule),
+    builder: (_) => WidgetSettingsSheet(schedule: schedule, periods: periods),
   );
 }
 
 /// 桌面小组件设置面板。
 class WidgetSettingsSheet extends StatefulWidget {
-  const WidgetSettingsSheet({super.key, required this.schedule});
+  const WidgetSettingsSheet({super.key, required this.schedule, this.periods});
 
   final Schedule schedule;
+
+  /// 作息设置（决定预览里的上课时间）。
+  final PeriodSettings? periods;
 
   @override
   State<WidgetSettingsSheet> createState() => _WidgetSettingsSheetState();
@@ -169,7 +174,11 @@ class _WidgetSettingsSheetState extends State<WidgetSettingsSheet> {
                         ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
-                  _WidgetPreview(settings: settings, schedule: widget.schedule),
+                  _WidgetPreview(
+                    settings: settings,
+                    schedule: widget.schedule,
+                    periods: widget.periods,
+                  ),
                   const SizedBox(height: 20),
                   TextField(
                     key: const ValueKey('widget-title-field'),
@@ -263,10 +272,15 @@ class _WidgetSettingsSheetState extends State<WidgetSettingsSheet> {
 
 /// App 内的实时预览（与原生小组件同一套规则）。
 class _WidgetPreview extends StatelessWidget {
-  const _WidgetPreview({required this.settings, required this.schedule});
+  const _WidgetPreview({
+    required this.settings,
+    required this.schedule,
+    this.periods,
+  });
 
   final WidgetSettings settings;
   final Schedule schedule;
+  final PeriodSettings? periods;
 
   @override
   Widget build(BuildContext context) {
@@ -275,12 +289,13 @@ class _WidgetPreview extends StatelessWidget {
     final lines = widgetTodayCourses(
       schedule,
       now,
+      periods: periods,
       max: settings.size.maxCourses,
     );
     final height = switch (settings.size.id) {
-      'large' => 250.0,
-      'medium' => 205.0,
-      _ => 132.0,
+      'large' => 268.0,
+      'medium' => 214.0,
+      _ => 142.0,
     };
     final dateText =
         '${now.month}.${now.day} 第${schedule.currentWeek(now)}周 '
@@ -290,80 +305,87 @@ class _WidgetPreview extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       height: height,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
         color: color.background,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
-          // 上 1/5：自定义文字 + 日期/周次/周几
+          // 上 1/5：自定义文字 + 日期/周次/周几（显示在自定义底色上）
           Expanded(
             flex: 1,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    key: const ValueKey('widget-preview-title'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: color.text,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      key: const ValueKey('widget-preview-title'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: color.text,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  dateText,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: color.accent,
+                  const SizedBox(width: 8),
+                  Text(
+                    dateText,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color.accent,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          // 下 4/5：剩余课程平均等分
+          // 下 4/5：白色面板 + 剩余课程平均等分
           Expanded(
             flex: 4,
-            child: lines.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '(〃\'▽\'〃)',
-                          style: TextStyle(fontSize: 11, color: color.muted),
-                        ),
-                        Text(
-                          '今天没有课啦',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: color.text,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: lines.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '(〃\'▽\'〃)',
+                            style: TextStyle(fontSize: 11, color: color.muted),
                           ),
-                        ),
+                          const Text(
+                            '今天没有课啦',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final line in lines)
+                          Expanded(
+                            child: _PreviewRow(line: line, accent: color.accent),
+                          ),
                       ],
                     ),
-                  )
-                : Column(
-                    children: [
-                      for (var i = 0; i < lines.length; i++)
-                        Expanded(
-                          child: _PreviewRow(
-                            line: lines[i],
-                            color: color,
-                            first: i == 0,
-                          ),
-                        ),
-                    ],
-                  ),
+            ),
           ),
         ],
       ),
@@ -371,69 +393,94 @@ class _WidgetPreview extends StatelessWidget {
   }
 }
 
+/// 预览里的一行课程：左侧时间列 + 课程色条 + 课程名 / 详情 / 倒计时。
 class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({
-    required this.line,
-    required this.color,
-    required this.first,
-  });
+  const _PreviewRow({required this.line, required this.accent});
 
   final WidgetCourseLine line;
-  final WidgetColorPreset color;
-  final bool first;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      decoration: BoxDecoration(
-        border: first
-            ? null
-            : Border(
-                top: BorderSide(
-                  color: color.accent.withValues(alpha: 0.18),
-                  width: 0.8,
-                ),
-              ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 34,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  line.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: color.text,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
               Text(
-                line.status,
+                line.startText,
                 maxLines: 1,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: color.accent,
+                  color: Color(0xFF111827),
                 ),
+              ),
+              Text(
+                line.endText,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 8, color: Color(0xFF9AA3AF)),
               ),
             ],
           ),
-          Text(
-            line.detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 9, color: color.muted),
+        ),
+        Container(
+          width: 3,
+          height: 26,
+          decoration: BoxDecoration(
+            color: courseColor(line.colorIndex),
+            borderRadius: BorderRadius.circular(2),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                line.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      line.detail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 8.5,
+                        color: Color(0xFF8A93A0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    line.status,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

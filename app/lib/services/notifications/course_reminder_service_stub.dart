@@ -19,17 +19,48 @@ class ReminderSettings {
       );
 }
 
+/// 与真实实现保持同名同结构（Web 端永远排程 0 条）。
+class ReminderSyncResult {
+  const ReminderSyncResult({
+    required this.scheduled,
+    required this.exact,
+    this.enabled = true,
+  });
+
+  final int scheduled;
+  final bool exact;
+  final bool enabled;
+
+  static const ReminderSyncResult off =
+      ReminderSyncResult(scheduled: 0, exact: false, enabled: false);
+}
+
 class CourseReminderService {
   CourseReminderService._();
 
   static Future<void> init() async {}
 
-  static Future<ReminderSettings> loadSettings() async =>
-      const ReminderSettings(enabled: false, leadMinutes: ReminderSettings.defaultLead);
+  static Future<ReminderSettings> loadSettings() async => const ReminderSettings(
+      enabled: false, leadMinutes: ReminderSettings.defaultLead);
 
   static Future<void> saveSettings(ReminderSettings settings) async {}
 
   static Future<bool> requestPermission() async => false;
 
-  static Future<void> sync(Schedule schedule, {required ReminderSettings settings}) async {}
+  static Future<bool> canScheduleExact() async => false;
+
+  static Future<bool> requestExactAlarmsPermission() async => false;
+
+  static Future<int> pendingCount() async => 0;
+
+  static Future<void> showTestNotification() async {}
+
+  static Future<bool> scheduleTestInTenSeconds() async => false;
+
+  static Future<ReminderSyncResult> sync(
+    Schedule schedule, {
+    required ReminderSettings settings,
+    PeriodSettings? periods,
+  }) async =>
+      ReminderSyncResult.off;
 }

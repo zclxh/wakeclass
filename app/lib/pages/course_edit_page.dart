@@ -18,11 +18,19 @@ class CourseEditResult {
 
 /// 新增 / 编辑单门课程。
 class CourseEditPage extends StatefulWidget {
-  const CourseEditPage({super.key, this.course, this.totalWeeks = 20});
+  const CourseEditPage({
+    super.key,
+    this.course,
+    this.totalWeeks = 20,
+    this.periods,
+  });
 
   /// 为空表示新增。
   final Course? course;
   final int totalWeeks;
+
+  /// 作息设置（决定「开始节次」下拉里可选几节、各节时间）。
+  final PeriodSettings? periods;
 
   @override
   State<CourseEditPage> createState() => _CourseEditPageState();
@@ -37,6 +45,16 @@ class _CourseEditPageState extends State<CourseEditPage> {
   late int _day;
   late int _startPeriod;
   late int _endPeriod;
+
+  PeriodSettings get _periods => widget.periods ?? PeriodSettings.defaults();
+
+  int get _maxPeriod {
+    var max = _periods.count;
+    for (final p in [_startPeriod, _endPeriod]) {
+      if (p > max) max = p;
+    }
+    return max;
+  }
 
   bool get _isNew => widget.course == null;
 
@@ -105,7 +123,8 @@ class _CourseEditPageState extends State<CourseEditPage> {
             startPeriod: _startPeriod,
             endPeriod: end,
             note: _note.text.trim(),
-            colorIndex: colorIndexFor(name),
+            // 编辑时保留用户自定义的颜色，不要按课程名重置
+            colorIndex: widget.course!.colorIndex,
             source: widget.course!.source.isEmpty
                 ? 'manual'
                 : widget.course!.source,
@@ -218,10 +237,19 @@ class _CourseEditPageState extends State<CourseEditPage> {
                   decoration: const InputDecoration(
                     labelText: '开始节次',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                   items: [
-                    for (var p = 1; p <= 12; p++)
-                      DropdownMenuItem(value: p, child: Text('第$p节')),
+                    for (var p = 1; p <= _maxPeriod; p++)
+                      DropdownMenuItem(
+                        value: p,
+                        child: Text(
+                          _periods.timeText(p).isEmpty
+                              ? '第$p节'
+                              : '第$p节 ${_periods.startOf(p)}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                   onChanged: (v) => setState(() => _startPeriod = v ?? 1),
                 ),
@@ -233,10 +261,19 @@ class _CourseEditPageState extends State<CourseEditPage> {
                   decoration: const InputDecoration(
                     labelText: '结束节次',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                   items: [
-                    for (var p = 1; p <= 12; p++)
-                      DropdownMenuItem(value: p, child: Text('第$p节')),
+                    for (var p = 1; p <= _maxPeriod; p++)
+                      DropdownMenuItem(
+                        value: p,
+                        child: Text(
+                          _periods.timeText(p).isEmpty
+                              ? '第$p节'
+                              : '第$p节 ${_periods.endOf(p)}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                   onChanged: (v) =>
                       setState(() => _endPeriod = v ?? _startPeriod),

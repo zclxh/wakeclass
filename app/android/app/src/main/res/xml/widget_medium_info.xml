@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 中尺寸：4×4，展示 5 门剩余课程 -->
+<!-- 中尺寸：4×4，下半部分平分给 3 门剩余课程 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="250dp"

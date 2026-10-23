@@ -12,6 +12,7 @@ export 'src/models/ocr_block.dart';
 export 'src/models/raw_cell.dart';
 export 'src/models/schedule.dart';
 export 'src/parsing/cell_text_parser.dart';
+export 'src/parsing/period_settings.dart';
 export 'src/parsing/period_times.dart';
 export 'src/parsing/week_parser.dart';
 export 'src/grid/grid_parser.dart';

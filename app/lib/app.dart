@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'model/period_model.dart';
 import 'model/schedule_model.dart';
 import 'model/theme_model.dart';
 import 'pages/schedule_page.dart';
@@ -38,7 +41,10 @@ class _WakeClassAppState extends State<WakeClassApp> {
       builder: (context, _) => MaterialApp(
         title: '醒课',
         debugShowCheckedModeBanner: false,
-        theme: buildLightTheme(seedColor: _themeModel.seedColor),
+        theme: buildLightTheme(
+          seedColor: _themeModel.seedColor,
+          backgroundColor: _themeModel.backgroundColor,
+        ),
         darkTheme: buildDarkTheme(seedColor: _themeModel.seedColor),
         themeMode: ThemeMode.system,
         home: HomeBoot(themeModel: _themeModel),
@@ -57,40 +63,121 @@ class HomeBoot extends StatefulWidget {
   State<HomeBoot> createState() => _HomeBootState();
 }
 
-class _HomeBootState extends State<HomeBoot> {
+class _HomeBootState extends State<HomeBoot> with WidgetsBindingObserver {
   final ScheduleModel _model = ScheduleModel(ScheduleStore());
+  final PeriodModel _periodModel = PeriodModel();
+
+  /// 课表读完后才渲染主页：保证打开时直接停在「当前周」而不是第 1 周。
+  bool _ready = false;
+
+  /// 上次同步课前提醒的时间（回到前台时节流同步）。
+  DateTime? _lastReminderSync;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _boot();
-  }
-
-  /// 加载课表、刷新桌面小组件并同步课前提醒。
-  Future<void> _boot() async {
-    try {
-      await _model.init();
-      // 打开 App 时刷新一次小组件（同时重新安排每分钟刷新）
-      await WidgetBridge.refresh();
-      final settings = await CourseReminderService.loadSettings();
-      await CourseReminderService.sync(_model.schedule, settings: settings);
-    } catch (_) {
-      // 通知初始化失败不影响主流程
-    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _model.dispose();
+    _periodModel.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 回到前台时补一次提醒同步（系统可能清掉过闹钟 / 跨周了）
+    if (state == AppLifecycleState.resumed) {
+      final last = _lastReminderSync;
+      if (last == null || DateTime.now().difference(last) > const Duration(hours: 6)) {
+        unawaited(_syncReminders());
+      }
+    }
+  }
+
+  /// 读取本地课表 → 放开首屏。
+  ///
+  /// 小组件刷新与提醒排程都走平台通道，放到后台进行（不阻塞首屏，
+  /// 也避免通道不可用时卡住启动）。
+  Future<void> _boot() async {
+    try {
+      await Future.wait([_model.init(), _periodModel.init()]);
+    } catch (_) {
+      // 读取失败也进主页（会显示空课表）
+    }
+    if (mounted) setState(() => _ready = true);
+    unawaited(_postBoot());
+  }
+
+  Future<void> _postBoot() async {
+    try {
+      await WidgetBridge.refresh();
+    } catch (_) {
+      // 非 Android / 测试环境
+    }
+    await _syncReminders();
+  }
+
+  Future<void> _syncReminders() async {
+    try {
+      final settings = await CourseReminderService.loadSettings();
+      await CourseReminderService.sync(
+        _model.schedule,
+        settings: settings,
+        periods: _periodModel.settings,
+      );
+      _lastReminderSync = DateTime.now();
+    } catch (_) {
+      // 通知不可用时忽略
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _model,
-      builder: (context, _) =>
-          SchedulePage(model: _model, themeModel: widget.themeModel),
+      listenable: Listenable.merge([_model, _periodModel]),
+      builder: (context, _) {
+        if (!_ready) return const _BootScreen();
+        return SchedulePage(
+          model: _model,
+          themeModel: widget.themeModel,
+          periodModel: _periodModel,
+        );
+      },
+    );
+  }
+}
+
+/// 启动占位（读本地课表通常只有几十毫秒）。
+class _BootScreen extends StatelessWidget {
+  const _BootScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '醒课',
+              style: theme.textTheme.headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 16),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

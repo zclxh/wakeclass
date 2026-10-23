@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 /// 课程配色（20 色），索引来自 core 的 `colorIndexFor(课程名)`。
+///
+/// **顺序必须与 Android 端 `CourseWidgetProvider.COURSE_COLORS` 保持一致**，
+/// 桌面小组件按 `color_index` 取色画课程色条。
 const List<Color> coursePalette = [
   Color(0xFFEF5350), // 红
   Color(0xFFEC407A), // 粉
@@ -28,19 +31,35 @@ const List<Color> coursePalette = [
 Color courseColor(int colorIndex) =>
     coursePalette[colorIndex.abs() % coursePalette.length];
 
-/// 暖色纸感浅色主题（[seedColor] 为主题色，设置页可更换）。
-ThemeData buildLightTheme({Color seedColor = const Color(0xFFB0652A)}) {
+/// 课程配色名（用于取色面板的无障碍标签）。
+const List<String> courseColorNames = [
+  '红', '粉', '紫', '深紫', '靛蓝', '蓝', '浅蓝', '青', '青绿', '绿',
+  '浅绿', '黄绿', '黄', '橙', '深橙', '棕', '蓝灰', '灰蓝', '浅灰蓝', '暖棕',
+];
+
+/// 暖色纸感浅色主题。
+///
+/// [seedColor] 为主题色（设置页可更换），[backgroundColor] 为页面背景色
+/// （设置页可单独更换，默认纸感米白）。
+ThemeData buildLightTheme({
+  Color seedColor = const Color(0xFFB0652A),
+  Color backgroundColor = const Color(0xFFFAF6F0),
+}) {
   final scheme = ColorScheme.fromSeed(
     seedColor: seedColor,
     brightness: Brightness.light,
   );
+  final onBackground = backgroundColor.computeLuminance() > 0.5
+      ? const Color(0xFF3E2C1C)
+      : Colors.white;
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: const Color(0xFFFAF6F0),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFFAF6F0),
-      foregroundColor: Color(0xFF3E2C1C),
+    scaffoldBackgroundColor: backgroundColor,
+    canvasColor: backgroundColor,
+    appBarTheme: AppBarTheme(
+      backgroundColor: backgroundColor,
+      foregroundColor: onBackground,
       elevation: 0,
       centerTitle: true,
     ),

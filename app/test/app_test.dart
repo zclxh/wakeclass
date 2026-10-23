@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakeclass_core/wakeclass_core.dart';
 
+import 'dart:convert';
+
 import 'package:wakeclass_app/app.dart';
+import 'package:wakeclass_app/model/theme_model.dart';
 import 'package:wakeclass_app/widgets/schedule_grid.dart';
 
 void main() {
@@ -122,13 +125,142 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('主题色'), findsOneWidget);
 
-    final before = Theme.of(tester.element(find.text('主题色'))).colorScheme.primary;
+    final before = Theme.of(tester.element(find.text('设置'))).colorScheme.primary;
     await tester.ensureVisible(find.byKey(const ValueKey('theme-1')));
     await tester.tap(find.byKey(const ValueKey('theme-1')));
     await tester.pumpAndSettle();
 
-    final after = Theme.of(tester.element(find.text('主题色'))).colorScheme.primary;
+    final after = Theme.of(tester.element(find.text('设置'))).colorScheme.primary;
     expect(after, isNot(before));
+    // 滚回顶部看当前主题名
+    await tester.dragUntilVisible(
+      find.text('主题色'),
+      find.byType(ListView),
+      const Offset(0, 120),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('海蓝'), findsOneWidget);
+  });
+
+  testWidgets('设置页可换背景色并全局生效', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const WakeClassApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('背景颜色'), findsOneWidget);
+
+    final before = Theme.of(tester.element(find.text('设置'))).scaffoldBackgroundColor;
+    final swatch = find.byKey(const ValueKey('bg-3'));
+    await tester.ensureVisible(swatch);
+    await tester.pumpAndSettle();
+    await tester.tap(swatch);
+    await tester.pumpAndSettle();
+
+    final after = Theme.of(tester.element(find.text('设置'))).scaffoldBackgroundColor;
+    expect(after, isNot(before));
+    expect(after, backgroundPresets[3].color);
+  });
+
+  testWidgets('打开 App 直接停在当前周（不是第 1 周）', (tester) async {
+    // 开学日 = 7 周前的周一 → 现在是第 8 周
+    final monday = mondayOf(DateTime.now()).subtract(const Duration(days: 49));
+    final schedule = Schedule(
+      id: 's1',
+      title: '26年秋',
+      termStart: monday,
+      totalWeeks: 20,
+      courses: [
+        Course.create(
+          name: '第八周课',
+          weeks: const [8],
+          dayOfWeek: 1,
+          startPeriod: 1,
+          endPeriod: 2,
+        ),
+        Course.create(
+          name: '第一周课',
+          weeks: const [1],
+          dayOfWeek: 2,
+          startPeriod: 3,
+          endPeriod: 4,
+        ),
+      ],
+    );
+    SharedPreferences.setMockInitialValues({
+      'wakeclass_schedule_v1': jsonEncode(schedule.toJson()),
+    });
+
+    await tester.pumpWidget(const WakeClassApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('第 8 周'), findsOneWidget);
+    expect(find.text('第八周课'), findsOneWidget);
+    expect(find.text('第一周课'), findsNothing);
+  });
+
+  testWidgets('点击课程可自定义颜色并保存', (tester) async {
+    final schedule = Schedule(
+      id: 's1',
+      title: 't',
+      termStart: mondayOf(DateTime.now()),
+      totalWeeks: 20,
+      courses: [
+        Course.create(
+          name: '高等数学A',
+          location: '甲101',
+          weeks: const [],
+          dayOfWeek: DateTime.now().weekday,
+          startPeriod: 1,
+          endPeriod: 2,
+          colorIndex: 0,
+        ),
+      ],
+    );
+    SharedPreferences.setMockInitialValues({
+      'wakeclass_schedule_v1': jsonEncode(schedule.toJson()),
+    });
+
+    await tester.pumpWidget(const WakeClassApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('高等数学A'));
+    await tester.pumpAndSettle();
+    expect(find.text('课程颜色'), findsOneWidget);
+    expect(find.text('编辑课程'), findsOneWidget);
+
+    final swatch = find.byKey(const ValueKey('course-color-5'));
+    await tester.ensureVisible(swatch);
+    await tester.pumpAndSettle();
+    await tester.tap(swatch);
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('wakeclass_schedule_v1');
+    expect(raw, isNotNull);
+    final saved = Schedule.fromJson(jsonDecode(raw!) as Map<String, dynamic>);
+    expect(saved.courses.single.colorIndex, 5);
+  });
+
+  testWidgets('上课时间入口显示当前作息', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const WakeClassApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.byKey(const ValueKey('period-entry')),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('第 1 节 08:00 · 每节 45 分钟 · 每天 12 节'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('period-entry')));
+    await tester.pumpAndSettle();
+    expect(find.text('上课时间'), findsOneWidget);
+    expect(find.text('08:00-08:45'), findsOneWidget);
   });
 }

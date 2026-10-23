@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 小尺寸：4×2，展示 3 门剩余课程 -->
+<!-- 小尺寸：4×2，下半部分平分给 2 门剩余课程 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
-    android:minHeight="130dp"
+    android:minHeight="140dp"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"

@@ -36,29 +36,42 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 
 - 七天一屏、表头显示日期、**今天加深高亮**、**左右滑动切上一周 / 下一周**、
   点击周次文字回到本周、只显示当前周的课程
-- 课程块随屏幕高度自适应、列分界线直达屏幕底部、20 色课程配色、冲突红框提示
+- **打开即停在当前周**（不再从第 1 周开始翻）
+- 课程块随屏幕高度自适应、列分界线直达屏幕底部、冲突红框提示
+- **点课程即可换颜色**：20 色课程色板，改完立刻生效（课表 + 桌面小组件同步）
 - 顶部栏：左上角桌面小组件入口；中间周次与设置齿轮同排；右侧导入（纯图标）
+
+### 上课时间（自定义作息）
+
+- 设置 → 上课时间：第 1 节几点开始、每节多少分钟、课间休息多久、每天几节课，
+  一键生成全天作息；也可以点某一节单独微调（应对「第 3 节 10:10」「下午 14:00」这类特殊安排）
+- 课表时间轴、课程提醒、桌面小组件倒计时**全部使用这套时间**
+
+### 外观
+
+- **主题色**：10 种预设一键换色（影响按钮、高亮等）
+- **背景颜色**：12 种浅色底（纸感米白 / 纯白 / 暖沙 / 浅灰 / 薄荷 / 天蓝 …），可单独更换
 
 ### 课程提醒
 
-- 设置页开关 + 提前 5 / 10 / 15 / 30 分钟可选
+- 设置页开关 + 提前 5 / 10 / 15 / 20 / 30 分钟可选
 - 本地通知（`flutter_local_notifications` + `timezone`）提醒课程名、教室、节次时间
-- 导入 / 改课后自动重排，重启后自动恢复（Android 13+ 需授予通知权限）
+- 使用**精确闹钟**（`SCHEDULE_EXACT_ALARM`），一次排程未来 60 天，回到前台自动补排
+- 设置页可查看「已排程 N 条」、一键重新排程、发测试通知（立即 + 10 秒后各一条）
 
 ### 桌面小组件（Android）
 
-三种尺寸：**小 4×2（3 门）** / **中 4×4（5 门）** / **大 4×5（7 门）**
+三种尺寸：**小 4×2（同时 2 门）** / **中 4×4（3 门）** / **大 4×5（4 门）**
 
-- 顶部 1/5：左上角**自定义文字**（≤6 字，默认取课表标题）、右上角「日期 · 第几周 · 周几」
-- 下方 4/5：只显示**今天还没上的课**，上完一门自动移除，剩余课程**平均等分**整个区域
-- 每节课实时显示「还有 X 分钟上课」/「还有 X 分钟下课」
-- 今天的课全部上完后显示「(〃'▽'〃) 今天没有课啦」
+- 整体铺一层**自定义底色**，上半 1/5 是自定义文字（≤6 字）+ 日期/周次/周几
+- 下半 4/5 是**白色圆角面板**，课程按数量**平均等分**（两门课就各占一半），四周露出底色
+- 每行：左侧上课/下课时间 + 课程色条（跟随课程自定义颜色）+ 课程名 + 「节次 · 地点 · 教师」+ 倒计时
+- 只显示**今天还没上完的课**：上完一门自动移除、后面的课补上来；全部上完显示「(〃'▽'〃) 今天没有课啦」
 - **8 套配色**可选，App 内实时预览，支持一键添加到桌面（Android 8+ 系统弹窗）
 - 每分钟自动刷新，跨天自动切到新一天课表
 
 ### 其他
 
-- **主题色**：10 种预设色一键换色，全局生效（深浅色模式同步），自动保存
 - **演示导入**：内置一份模拟识别结果（14 门课），无需真机即可体验全流程
 - **本地存储**：`shared_preferences` JSON；设置页支持学期信息、JSON 备份 / 恢复、清空课表
 - **Web 端可跑**：`flutter build web` 直接出静态站（ML Kit 不支持 Web，自动降级为演示导入）
@@ -80,14 +93,14 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
 │   │   │   ├── notifications/  # 课前提醒调度
 │   │   │   ├── storage/        # 本地 JSON 存储
 │   │   │   └── widget/         # 桌面小组件桥接与配置
-│   │   ├── model/              # ScheduleModel（状态 + 持久化）、ThemeModel
+│   │   ├── model/              # ScheduleModel（状态 + 持久化）、ThemeModel、PeriodModel（作息）
 │   │   └── theme.dart          # 暖色纸感主题
 │   ├── android/                # 原生壳：3 个 AppWidgetProvider + 每分钟刷新 + pin 请求
 │   ├── test/                   # widget 测试 + 解析测试 + 两套端到端集成测试 + 模拟教务系统
 │   └── tool/                   # 真机/真实系统诊断脚本
 ├── packages/wakeclass_core/    # 纯 Dart 领域包（零 Flutter 依赖）
 │   ├── lib/src/grid/           # GridParser：OCR 文本块 → 课程网格
-│   ├── lib/src/parsing/        # 周次解析、单元格文本解析、节次时间
+│   ├── lib/src/parsing/        # 周次解析、单元格文本解析、节次时间、作息设置（PeriodSettings）
 │   ├── lib/src/models/         # Course / Schedule / OcrTextBlock / RawCell
 │   └── test/                   # 纯 Dart 单元测试（独立 Dart SDK 可跑）
 └── docs/技术方案.md             # 完整技术方案（架构、解析算法、教务适配层）
@@ -183,6 +196,15 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 
 > 小组件随时间自动刷新：上完一门课就少一门，全部上完显示「今天没有课啦」。
 
+### 课程提醒收不到 / 不准？
+
+1. 设置 → 课程提醒：确认开关已开、通知权限已授予（Android 13+）
+2. 看「精确闹钟」状态：显示**未授权**时点「去授权精确闹钟」（Android 12+ 需要单独授权，
+   否则系统会把提醒延后几分钟到几小时）
+3. 点「测试通知」，应立即收到一条，并再收到一条 10 秒后的定时通知
+4. 小米 / 红米 / HyperOS：设置 → 应用设置 → 醒课 → **省电策略改「无限制」**，
+   并允许「自启动」，否则系统可能拦截后台闹钟
+
 ---
 
 ## 技术要点
@@ -193,10 +215,16 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
   登录时必须使用带新 `;jsessionid=` 的 canonical service，否则票据校验不过
 - **课表解析**：URP 课表数据藏在 `new TaskActivity(...)` 的 JS 里，
   `index = 星期 * 节次数 + 节次`，周次是 53 位 bitmask；强智走 HTML 表格解析
-- **桌面小组件**：原生 Kotlin `AppWidgetProvider` 读 `FlutterSharedPreferences` 里的课表 JSON，
-  用 `RemoteViews` 渲染；`AlarmManager` 每分钟刷新一次，跨天自动切换
+- **桌面小组件**：原生 Kotlin `AppWidgetProvider` 读 `FlutterSharedPreferences` 里的课表 JSON
+  与作息 JSON，用 `RemoteViews` 渲染；`AlarmManager` 每分钟刷新一次，跨天自动切换
   - 布局只能用 RemoteViews 白名单控件（`TextView` / `ImageView` / `LinearLayout` / `FrameLayout`），
     **不能用 `android.view.View`**，否则桌面会显示「载入窗口小部件时出现问题」
+  - `RemoteViews.addView` **不会保留 `layout_weight`**（实测行高退回内容高度，两门课只占上半部分），
+    所以课程行是布局里**固定的 4 个分栏**（小 2 / 中 3 / 大 4），用显隐控制，而不是运行时动态添加
+  - `RemoteViews` 不能改控件背景色（`setBackgroundColor` 没有 `@RemotableViewMethod`），
+    课程色条用「圆角位图 + `setImageViewBitmap`」实现
+- **提醒准时**：`zonedSchedule` 使用 `exactAllowWhileIdle` + 声明 `SCHEDULE_EXACT_ALARM`，
+  设置页提供授权入口与测试通知；一次排程未来 60 天（上限 300 条），App 回前台时补排
 
 ---
 
@@ -219,6 +247,7 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 - [x] 强智 / CAS+URP 教务直连
 - [x] 截图 OCR 导入 + 校对页
 - [x] 课前提醒、桌面小组件（三种尺寸 / 配色 / 倒计时）
+- [x] 课程自定义颜色、页面背景色、自定义上课时间
 - [ ] 正方教务直连、多张截图合并导入、CAS 学期选择
 - [ ] 多学期、导出 ICS、分享长图
 - [ ] iOS 小组件、云备份、多设备同步
