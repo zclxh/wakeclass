@@ -127,13 +127,16 @@ class GenericJwxtClient {
 
     final (userField, passwordField) = _findCredentialFields(form);
     final hidden = <String, String>{};
-    for (final input in form.querySelectorAll('input')) {
+    // 有些系统的隐藏参数写在 <form> 外面（比如正方把 xxdm / mmsfjm 放在表单前），
+    // 所以整页扫描：登录表单里的 + 不属于任何表单的 hidden 都收。
+    for (final input in document.querySelectorAll('input')) {
       final name = input.attributes['name'];
       if (name == null || name.isEmpty) continue;
-      if (_typeOf(input) == 'hidden' ||
-          _typeOf(input) == 'submit' && (input.attributes['name'] ?? '').isNotEmpty) {
-        hidden.putIfAbsent(name, () => input.attributes['value'] ?? '');
-      }
+      final type = _typeOf(input);
+      if (type != 'hidden' && type != 'submit') continue;
+      final owner = _owningForm(input);
+      if (owner != null && owner != form) continue;
+      hidden.putIfAbsent(name, () => input.attributes['value'] ?? '');
     }
 
     String? captchaField;
@@ -359,6 +362,16 @@ class GenericJwxtClient {
     // 有些系统密码框不在 form 内（AJAX 登录）：退化为整页查找。
     if (document.querySelectorAll('input[type=password]').isNotEmpty) {
       return document.querySelector('form') ?? document.documentElement;
+    }
+    return null;
+  }
+
+  /// 向上找最近的 <form>（没有则返回 null）。
+  Element? _owningForm(Element element) {
+    Element? node = element.parent;
+    while (node != null) {
+      if (node.localName == 'form') return node;
+      node = node.parent;
     }
     return null;
   }

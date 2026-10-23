@@ -281,6 +281,29 @@ class GenericAdapter implements JwxtAdapter {
   void close() => _client.close();
 }
 
+/// 已知学校的登录地址预设（可选，方便一键填地址）。
+class JwxtPreset {
+  const JwxtPreset(this.school, this.loginUrl, this.adapterId);
+
+  /// 学校名。
+  final String school;
+
+  /// 登录页地址。
+  final String loginUrl;
+
+  /// 对应的适配器 id（`zf` / `qz` / `cas` / `generic`）。
+  final String adapterId;
+}
+
+/// 内置学校预设；新增学校只要往这里加一行。
+const jwxtPresets = <JwxtPreset>[
+  JwxtPreset(
+    '昭通卫生职业学院',
+    'https://jwxt.ztwzy.cn/jwglxt/xtgl/login_slogin.html',
+    'zf',
+  ),
+];
+
 /// 适配器注册表：负责「URL → 用哪个适配器」。
 class JwxtAdapterRegistry {
   JwxtAdapterRegistry._();

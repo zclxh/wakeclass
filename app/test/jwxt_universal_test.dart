@@ -33,6 +33,10 @@ void main() {
       expect(challenge.modulus, isNotEmpty);
       expect(challenge.exponent, isNotEmpty);
       expect(challenge.csrfToken, isNotEmpty);
+      // 隐藏参数写在 form 外面也要收进来（真实正方就是这样）
+      expect(challenge.hiddenFields['mmsfjm'], '1');
+      expect(challenge.hiddenFields['xxdm'], '14582');
+      expect(challenge.hiddenFields['language'], 'zh_CN');
 
       final result = await client.loginAndImport(
         challenge,

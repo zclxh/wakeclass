@@ -23,8 +23,8 @@ Flutter 应用 + 纯 Dart 领域包（零 Flutter 依赖）。已在真机上跑
   - **适配器架构**：所有厂商统一走 `JwxtAdapter` 接口（`detect → prepare → login`），
     UI 不按厂商分支；新增一所学校 = 新增一个适配器文件
   - **正方教务（jwglxt）**：登录页 `csrftoken` + `login_getPublicKey` 的 RSA 公钥，
-    密码按学校同样的 PKCS#1 v1.5 规则加密后提交 → `kbcx/xskbcx_cxXsKb.html` 的
-    `kbList` JSON（节次 / 周次 / 地点 / 教师）→ 失败时回退 HTML 表格解析
+    密码按学校前端同样的规则（PKCS#1 v1.5，结果取 **base64**）加密后提交 →
+    `kbcx/xskbcx_cxXsKb.html` 的 `kbList` JSON（节次 / 周次 / 地点 / 教师）→ 失败时回退 HTML 表格解析
   - **强智 jsxsd**：登录表单探测 → 课表页（`xskb/xskb_list.do`）→ 学期选择 → HTML 解析
   - **统一认证（CAS）+ URP**：金智 CAS 登录页探测（`execution` / 加密盐）→ 按官方 `encrypt.js`
     规则做 AES-CBC 密码加密 → 票据 302 跳转（含 `;jsessionid=` URL 重写）→ 定位 URP 课表页
@@ -232,7 +232,7 @@ flutter build apk --release    # 产物：build/app/outputs/flutter-apk/app-rele
 - **课表解析**：URP 课表数据藏在 `new TaskActivity(...)` 的 JS 里，
   `index = 星期 * 节次数 + 节次`，周次是 53 位 bitmask；强智走 HTML 表格解析
 - **教务适配器层**：`JwxtAdapter` 统一 `detect / prepare / login`，UI 不按厂商分支
-  - 正方：`csrftoken` + RSA（PKCS#1 v1.5，pointycastle）加密密码 → `kbList` JSON
+  - 正方：`csrftoken` + RSA（PKCS#1 v1.5，base64，pointycastle）加密密码 → `kbList` JSON
   - 通用：自动识别登录表单（学号/密码/hidden/验证码）→ 跟随 302 → 找「课表」链接或常见路径
     → 通用表格解析（与 OCR 共用 `parseCellText`，兼容 rowspan/colspan）
 - **桌面小组件**：原生 Kotlin `AppWidgetProvider` 读 `FlutterSharedPreferences` 里的课表 JSON

@@ -73,9 +73,12 @@ function hasSession(req) {
 const zfLoginPage = (csrf) => `<!doctype html>
 <html><head><meta charset="utf-8"><title>统一身份认证</title></head>
 <body>
+<!-- 真实正方把大部分隐藏参数写在 form 外面，这里保持一致 -->
+<input type="hidden" name="xxdm" value="14582">
+<input type="hidden" name="mmsfjm" value="1">
+<input type="hidden" name="csrftoken" id="csrftoken" value="${csrf}">
 <h2>正方教务管理系统</h2>
 <form id="loginForm" action="/jwglxt/xtgl/login_slogin.html" method="post">
-  <input type="hidden" name="csrftoken" id="csrftoken" value="${csrf}">
   <input type="hidden" name="language" value="zh_CN">
   <label>用户名<input type="text" id="yhm" name="yhm"></label>
   <label>密码<input type="password" id="mm" name="mm"></label>
@@ -163,10 +166,11 @@ const server = http.createServer(async (req, res) => {
     const form = parseForm(body);
     let plain = '';
     try {
+      // 正方前端提交的是 base64(RSA(PKCS#1 v1.5, 密码))
       plain = crypto
         .privateDecrypt(
           { key: privateKey, padding: crypto.constants.RSA_PKCS1_PADDING },
-          Buffer.from(form.mm || '', 'hex'),
+          Buffer.from(form.mm || '', 'base64'),
         )
         .toString('utf8');
     } catch (e) {

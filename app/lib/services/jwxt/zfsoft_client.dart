@@ -136,17 +136,17 @@ class ZfsoftClient {
 
     var csrf = '';
     final hidden = <String, String>{};
-    if (form != null) {
-      for (final input in form.querySelectorAll('input')) {
-        final name = input.attributes['name'];
-        if (name == null || name.isEmpty) continue;
-        final type = (input.attributes['type'] ?? 'text').toLowerCase();
-        final value = input.attributes['value'] ?? '';
-        if (type == 'hidden') {
-          hidden[name] = value;
-          if (name.toLowerCase().contains('csrf')) csrf = value;
-        }
-      }
+    // 正方的隐藏参数（xxdm / mmsfjm / yzcskz …）大多写在 <form> 外面，
+    // 所以这里扫描整页：属于登录表单的、以及不属于任何表单的 hidden 都收。
+    for (final input in document.querySelectorAll('input')) {
+      if ((input.attributes['type'] ?? '').toLowerCase() != 'hidden') continue;
+      final name = input.attributes['name'];
+      if (name == null || name.isEmpty) continue;
+      final owner = _owningForm(input);
+      if (owner != null && form != null && owner != form) continue;
+      final value = input.attributes['value'] ?? '';
+      hidden.putIfAbsent(name, () => value);
+      if (name.toLowerCase().contains('csrf')) csrf = value;
     }
     if (csrf.isEmpty) {
       final match = RegExp(r'csrftoken=([^;\s]+)').firstMatch(page.cookie);
@@ -229,9 +229,11 @@ class ZfsoftClient {
     String semester = '',
   }) async {
     final warnings = <String>[];
+    // 与正方前端一致：mm = base64(RSA(PKCS#1 v1.5, 密码))；
+    // 取不到公钥 / 加密失败时回退明文（少数学校 mmsfjm=0）。
     final encrypted = challenge.modulus.isEmpty
         ? password
-        : (rsaEncryptPasswordHex(
+        : (rsaEncryptPassword(
               password,
               modulusBase64: challenge.modulus,
               exponentBase64: challenge.exponent,
@@ -515,6 +517,16 @@ class ZfsoftClient {
           return form;
         }
       }
+    }
+    return null;
+  }
+
+  /// 向上找最近的 <form>（没有则返回 null）。
+  Element? _owningForm(Element element) {
+    Element? node = element.parent;
+    while (node != null) {
+      if (node.localName == 'form') return node;
+      node = node.parent;
     }
     return null;
   }

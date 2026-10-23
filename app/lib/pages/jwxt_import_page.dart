@@ -42,6 +42,9 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
   String? _errorHint;
   String? _detected;
 
+  /// 快速选择学校下拉框的当前值（空串 = 未选）。
+  String _presetSchool = '';
+
   @override
   void dispose() {
     _url.dispose();
@@ -238,6 +241,33 @@ class _JwxtImportPageState extends State<JwxtImportPage> {
             ),
             const SizedBox(height: 12),
           ],
+          DropdownButtonFormField<String>(
+            initialValue: _presetSchool,
+            decoration: const InputDecoration(
+              labelText: '快速选择学校（可选）',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              const DropdownMenuItem(value: '', child: Text('不选，手动填写地址')),
+              for (final preset in jwxtPresets)
+                DropdownMenuItem(
+                    value: preset.school, child: Text(preset.school)),
+            ],
+            onChanged: (value) {
+              if (value == null || value.isEmpty) {
+                setState(() => _presetSchool = '');
+                return;
+              }
+              final preset = jwxtPresets.firstWhere((p) => p.school == value);
+              setState(() {
+                _presetSchool = value;
+                _url.text = preset.loginUrl;
+                _selected = JwxtAdapterRegistry.byId(preset.adapterId, _adapters);
+              });
+            },
+          ),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _selected?.id ?? 'auto',
             decoration: const InputDecoration(

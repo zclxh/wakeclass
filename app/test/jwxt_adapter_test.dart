@@ -91,26 +91,41 @@ void main() {
   });
 
   group('正方 RSA 加密', () {
-    test('加密结果能用私钥还原出原密码', () {
+    test('加密结果能用私钥还原出原密码（base64，与正方前端一致）', () {
       final pair = _generateKeyPair();
       final publicKey = pair.publicKey as RSAPublicKey;
       final modulus = base64Encode(_bigIntBytes(publicKey.modulus!));
       final exponent = base64Encode(_bigIntBytes(publicKey.publicExponent!));
-      final hex = rsaEncryptPasswordHex(
+      final encrypted = rsaEncryptPassword(
         'zfpass!2026',
         modulusBase64: modulus,
         exponentBase64: exponent,
       );
-      expect(hex, isNotNull);
-      expect(hex!.length, greaterThan(100));
-      expect(hex, matches(RegExp(r'^[0-9a-f]+$')));
-      final decrypted = _decrypt(pair, hexToBytes(hex));
+      expect(encrypted, isNotNull);
+      // 1024 位密钥 → 128 字节 → base64 172 字符
+      expect(encrypted!.length, 172);
+      expect(encrypted, matches(RegExp(r'^[A-Za-z0-9+/]+={0,2}$')));
+      final decrypted = _decrypt(pair, base64Decode(encrypted));
       expect(utf8.decode(decrypted), 'zfpass!2026');
+    });
+
+    test('中文密码也能正确还原（UTF-8 编码与前端一致）', () {
+      final pair = _generateKeyPair();
+      final publicKey = pair.publicKey as RSAPublicKey;
+      final modulus = base64Encode(_bigIntBytes(publicKey.modulus!));
+      final exponent = base64Encode(_bigIntBytes(publicKey.publicExponent!));
+      final encrypted = rsaEncryptPassword(
+        '密码2026',
+        modulusBase64: modulus,
+        exponentBase64: exponent,
+      );
+      expect(encrypted, isNotNull);
+      expect(utf8.decode(_decrypt(pair, base64Decode(encrypted!))), '密码2026');
     });
 
     test('公钥非法时返回 null（调用方回退明文）', () {
       expect(
-        rsaEncryptPasswordHex('x', modulusBase64: '!!!', exponentBase64: '???'),
+        rsaEncryptPassword('x', modulusBase64: '!!!', exponentBase64: '???'),
         isNull,
       );
     });
