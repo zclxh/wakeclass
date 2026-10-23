@@ -441,7 +441,7 @@ class ZfsoftClient {
     request.followRedirects = false;
     if (cookie.isNotEmpty) request.headers['Cookie'] = cookie;
     if (referer.isNotEmpty) request.headers['Referer'] = referer;
-    request.headers['User-Agent'] = 'Mozilla/5.0 (WakeClass) AppleWebKit/537.36';
+    request.headers['User-Agent'] = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
     final streamed = await _client.send(request).timeout(timeout);
     final bytes = await streamed.stream.toBytes();
     return _HttpResult(
@@ -472,7 +472,7 @@ class ZfsoftClient {
         // 忽略非法 referer
       }
     }
-    request.headers['User-Agent'] = 'Mozilla/5.0 (WakeClass) AppleWebKit/537.36';
+    request.headers['User-Agent'] = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
     if (accept != null) request.headers['Accept'] = accept;
     if (xhr) request.headers['X-Requested-With'] = 'XMLHttpRequest';
     request.bodyFields = data;

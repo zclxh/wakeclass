@@ -106,43 +106,88 @@ class CasZfClient {
     }
     final doc = html_parser.parse(page.text);
     final form = _findLoginForm(doc);
-    if (form == null) {
+
+    // 字段名：各校自研的统一认证经常把真正的密码框做成「无 name 的 ppassword
+    // + 一个 name=password 的隐藏式 text」，还有手机号登录表单混在一起，
+    // 所以按已知写法逐个试，最后才回退到第一个密码框。
+    final userField = _pickUserField(doc);
+    final passField = _pickPasswordField(doc);
+    if (userField == null || passField == null) {
       throw const JwxtException(
-          JwxtErrorKind.loginFormNotFound, '这个页面里没有找到登录表单',
-          hint: '确认打开的是统一认证登录页（有账号 / 密码输入框）');
+          JwxtErrorKind.loginFormNotFound, '这个页面里没有找到账号 / 密码输入框',
+          hint: '确认打开的是统一认证登录页（页面上有「账号登录」和密码框）');
     }
 
     final hidden = <String, String>{};
-    String userField = 'username';
-    String passwordField = 'password';
-    var sawPassword = false;
-    for (final input in form.querySelectorAll('input')) {
+    for (final input in doc.querySelectorAll('input')) {
       final name = input.attributes['name'];
       if (name == null || name.isEmpty) continue;
-      final type = (input.attributes['type'] ?? 'text').toLowerCase();
-      if (type == 'hidden') {
+      if ((input.attributes['type'] ?? '').toLowerCase() == 'hidden') {
         hidden[name] = input.attributes['value'] ?? '';
-      } else if (type == 'password' && !sawPassword) {
-        passwordField = name;
-        sawPassword = true;
-      } else if (type == 'text' || type == 'tel' || type == 'email') {
-        if (userField == 'username') userField = name;
       }
-    }
-    if (!sawPassword) {
-      throw const JwxtException(JwxtErrorKind.loginFormNotFound, '登录表单里没有密码输入框');
     }
     hidden.putIfAbsent('_eventId', () => 'submit');
 
-    final action = _absolute(form.attributes['action'], page.url) ?? page.url;
+    // 提交地址：表单 action 有时只是 `login?v=…`（丢了 service），
+    // 这时直接提交到带 service 的原始地址。
+    var action = _absolute(form?.attributes['action'], page.url) ?? page.url;
+    final actionUri = Uri.tryParse(action);
+    if (actionUri != null && !actionUri.queryParameters.containsKey('service')) {
+      action = page.url;
+    }
+
     return CasZfChallenge(
       loginAction: action,
       cookie: page.cookie,
       hiddenFields: hidden,
       serviceUrl: uri.queryParameters['service'] ?? '',
       userField: userField,
-      passwordField: passwordField,
+      passwordField: passField,
     );
+  }
+
+  /// 账号字段名。
+  static String? _pickUserField(Document doc) {
+    for (final input in doc.querySelectorAll('input')) {
+      final type = (input.attributes['type'] ?? 'text').toLowerCase();
+      if (type == 'hidden' || type == 'password' || type == 'checkbox') continue;
+      final name = input.attributes['name'] ?? '';
+      final id = input.attributes['id'] ?? '';
+      if (name == 'username' ||
+          name == 'userName' ||
+          name == 'j_username' ||
+          id == 'username') {
+        return name.isNotEmpty ? name : 'username';
+      }
+    }
+    return null;
+  }
+
+  /// 密码字段名：优先 `name=password`（防自动填充页面常有的隐藏 text），
+  /// 再试「无 name 的密码框」，最后才取第一个带 name 的密码框。
+  static String? _pickPasswordField(Document doc) {
+    final inputs = doc.querySelectorAll('input');
+    for (final input in inputs) {
+      if ((input.attributes['name'] ?? '') == 'password') return 'password';
+    }
+    for (final input in inputs) {
+      final id = input.attributes['id'] ?? '';
+      if (id == 'ppassword' || id == 'password') {
+        final name = input.attributes['name'] ?? '';
+        return name.isNotEmpty ? name : 'password';
+      }
+    }
+    for (final input in inputs) {
+      if ((input.attributes['type'] ?? '').toLowerCase() != 'password') continue;
+      final name = input.attributes['name'] ?? '';
+      if (name.isEmpty) return 'password';
+      final lower = name.toLowerCase();
+      if (lower.contains('mobile') || lower.contains('sms') || lower == 'code') {
+        continue; // 手机号 / 短信验证码登录框
+      }
+      return name;
+    }
+    return null;
   }
 
   // ---------- 登录 + 导入 ----------
