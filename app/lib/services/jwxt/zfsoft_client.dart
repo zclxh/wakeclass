@@ -343,7 +343,8 @@ class ZfsoftClient {
       throw const JwxtException(
         JwxtErrorKind.noSchedule,
         '登录成功，但没有读取到课表',
-        hint: '请确认本学期已排课，或改用截图导入。',
+        hint: '多半是学期不对：在「学期」里填 2026-2027-1（或 2026-2027-2）再试；'
+            '也可以导入后手动改开学日，或改用截图导入。',
       );
     }
     warnings.addAll(parsed.warnings);
